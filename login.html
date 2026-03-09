@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>Momentum · Entrar</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400;1,600&family=IBM+Plex+Mono:wght@300;400&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+:root{--ink:#1a1410;--cream:#f8f4ec;--copper:#8a6030;--gold:rgba(200,160,96,1);--dark:#120f0a;}
+html,body{height:100%;overflow:hidden;}
+body{background:var(--dark);font-family:'IBM Plex Mono',monospace;display:flex;align-items:center;justify-content:center;}
+
+/* ── animated background ── */
+.bg{position:fixed;inset:0;z-index:0;}
+.bg canvas{width:100%;height:100%;display:block;}
+
+/* ── card ── */
+.card{position:relative;z-index:10;width:min(360px,94vw);padding:0;}
+
+.logo{text-align:center;margin-bottom:40px;}
+.logo-word{font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:300;font-size:clamp(32px,8vw,42px);color:rgba(240,224,192,.85);letter-spacing:.06em;display:block;}
+.logo-sub{font-size:8px;letter-spacing:.32em;text-transform:uppercase;color:rgba(200,160,96,.28);margin-top:4px;display:block;}
+
+.form{display:flex;flex-direction:column;gap:14px;}
+
+.field{position:relative;}
+.field label{display:block;font-size:7px;letter-spacing:.22em;text-transform:uppercase;color:rgba(200,160,96,.35);margin-bottom:6px;}
+.field input{
+  width:100%;padding:14px 16px;
+  background:rgba(200,160,96,.05);
+  border:1px solid rgba(200,160,96,.14);
+  color:rgba(240,224,192,.85);
+  font-family:'IBM Plex Mono',monospace;font-size:13px;
+  outline:none;border-radius:0;
+  transition:border-color .2s,background .2s;
+  -webkit-appearance:none;
+}
+.field input::placeholder{color:rgba(200,160,96,.18);}
+.field input:focus{border-color:rgba(200,160,96,.45);background:rgba(200,160,96,.08);}
+
+.btn-enter{
+  width:100%;padding:15px;margin-top:6px;
+  background:rgba(138,96,48,.25);
+  border:1px solid rgba(200,160,96,.3);
+  color:rgba(240,224,192,.85);
+  font-family:'IBM Plex Mono',monospace;font-size:9px;
+  letter-spacing:.24em;text-transform:uppercase;
+  cursor:pointer;outline:none;
+  transition:all .2s;position:relative;overflow:hidden;
+}
+.btn-enter:hover{background:rgba(138,96,48,.42);border-color:rgba(200,160,96,.55);}
+.btn-enter:active{transform:scale(.99);}
+.btn-enter.loading{pointer-events:none;color:transparent;}
+.btn-enter.loading::after{
+  content:'';position:absolute;inset:0;margin:auto;
+  width:16px;height:16px;
+  border:1px solid rgba(200,160,96,.3);
+  border-top-color:rgba(200,160,96,.8);
+  border-radius:50%;
+  animation:spin .7s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+.err{
+  font-size:8px;color:rgba(220,100,80,.75);letter-spacing:.08em;
+  text-align:center;min-height:16px;margin-top:-4px;
+  transition:opacity .2s;
+}
+
+.divider{height:1px;background:rgba(200,160,96,.07);margin:6px 0;}
+
+.back{display:block;text-align:center;font-size:7px;letter-spacing:.18em;text-transform:uppercase;color:rgba(200,160,96,.22);text-decoration:none;margin-top:20px;transition:color .2s;}
+.back:hover{color:rgba(200,160,96,.5);}
+
+/* ── momentum pulse ring ── */
+.pulse-ring{
+  position:absolute;inset:-20px;
+  border-radius:50%;
+  background:radial-gradient(ellipse at center,rgba(138,96,48,.04) 0%,transparent 70%);
+  animation:pulse 4s ease-in-out infinite;
+  pointer-events:none;
+  z-index:-1;
+}
+@keyframes pulse{0%,100%{transform:scale(1);opacity:.5;}50%{transform:scale(1.06);opacity:1;}}
+</style>
+</head>
+<body>
+
+<div class="bg"><canvas id="bg-canvas"></canvas></div>
+
+<div class="card">
+  <div class="pulse-ring"></div>
+  <div class="logo">
+    <span class="logo-word">Momentum</span>
+    <span class="logo-sub">Personal Training System</span>
+  </div>
+
+  <div class="form">
+    <div class="field">
+      <label>Usuário</label>
+      <input type="text" id="inp-email" placeholder="admin · ou email" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false">
+    </div>
+    <div class="field">
+      <label>Senha</label>
+      <input type="password" id="inp-pass" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <div class="err" id="err-msg"></div>
+    <button class="btn-enter" id="btn-enter" onclick="doLogin()">Entrar</button>
+    <div class="login-hint">Demo — use <span style="color:rgba(200,160,96,.45)">admin / admin</span></div>
+    <div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(200,160,96,.08);text-align:center;font-size:7px;color:rgba(200,160,96,.2);letter-spacing:.14em;text-transform:uppercase">
+    </div>
+  </div>
+
+  <!-- Student picker (demo aluno) -->
+  <div id="student-picker" style="display:none;margin-top:20px">
+    <div style="font-size:7px;letter-spacing:.2em;text-transform:uppercase;color:rgba(200,160,96,.3);text-align:center;margin-bottom:12px">Selecione o aluno</div>
+    <div id="student-list" style="display:flex;flex-direction:column;gap:6px"></div>
+  </div>
+
+  <a href="momentum-landing-v4.html" class="back">← Voltar ao site</a>
+</div>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script>
+// ── Demo users ────────────────────────────────────────
+const DEMO_STUDENTS = [
+  {id:'jacqueline',   name:'Jacqueline',    nivel:'Iniciante',    goal:'Recomposição'},
+  {id:'ana_beatriz',  name:'Ana Beatriz',   nivel:'Intermediária',goal:'Hipertrofia'},
+  {id:'lara_soares',  name:'Lara Soares',   nivel:'Intermediária',goal:'Hipertrofia'},
+  {id:'mariana_costa',name:'Mariana Costa', nivel:'Avançada',     goal:'Força'},
+  {id:'carlos_mendes',name:'Carlos Mendes', nivel:'Intermediário',goal:'Hipertrofia'},
+  {id:'fernanda_lima',name:'Fernanda Lima', nivel:'Iniciante',    goal:'Condicionamento'},
+  {id:'roberto_silva',name:'Roberto Silva', nivel:'Iniciante',    goal:'Reabilitação'},
+  {id:'paula_freitas',name:'Paula Freitas', nivel:'Intermediária',goal:'Hipertrofia'},
+];
+
+// Check if already in demo session
+const demoRole = sessionStorage.getItem('momentum_demo_role');
+if(demoRole === 'admin') window.location.href = 'momentum-dashboard-v2.html';
+
+// Se já está logado no Firebase → vai direto pro dashboard
+if(typeof onAuthReady === 'function') {
+  onAuthReady(user => { if(user) window.location.href = 'momentum-dashboard-v2.html'; });
+}
+
+async function doLogin() {
+  const raw   = document.getElementById('inp-email').value.trim();
+  const pass  = document.getElementById('inp-pass').value;
+  const btn   = document.getElementById('btn-enter');
+  const err   = document.getElementById('err-msg');
+  err.textContent = '';
+
+  if(!raw || !pass){ err.textContent = 'Preencha usuário e senha.'; return; }
+
+  // ── Demo mode ──────────────────────────────────────
+  if(raw.toLowerCase() === 'admin' && pass === 'admin') {
+    sessionStorage.setItem('momentum_demo_role', 'admin');
+    btn.classList.add('loading');
+    setTimeout(() => window.location.href = 'momentum-dashboard-v2.html', 400);
+    return;
+  }
+
+  // ── Firebase Auth ──────────────────────────────────
+  btn.classList.add('loading');
+  try {
+    await authSignIn(raw, pass);
+    // authSignIn bem-sucedido → onAuthReady acima vai redirecionar automaticamente
+    // mas por segurança forçamos também aqui:
+    window.location.href = 'momentum-dashboard-v2.html';
+  } catch(e) {
+    const msgs = {
+      'auth/user-not-found':    'Usuário não encontrado.',
+      'auth/wrong-password':    'Senha incorreta.',
+      'auth/invalid-email':     'Email inválido.',
+      'auth/invalid-credential':'Email ou senha incorretos.',
+      'auth/too-many-requests': 'Muitas tentativas. Aguarde.',
+    };
+    err.textContent = msgs[e.code] || `Erro: ${e.message}`;
+    btn.classList.remove('loading');
+  }
+}
+
+function showStudentPicker() {
+  document.getElementById('btn-enter').style.display = 'none';
+  document.getElementById('student-picker').style.display = 'block';
+  const list = document.getElementById('student-list');
+  list.innerHTML = DEMO_STUDENTS.map(s => `
+    <button onclick="enterAsStudent('${s.id}')" style="
+      width:100%;padding:11px 14px;background:rgba(200,160,96,.04);
+      border:1px solid rgba(200,160,96,.12);color:rgba(240,224,192,.8);
+      font-family:'IBM Plex Mono',monospace;font-size:8px;cursor:pointer;
+      display:flex;align-items:center;gap:10px;text-align:left;
+      transition:all .15s;
+    " onmouseover="this.style.background='rgba(200,160,96,.1)';this.style.borderColor='rgba(200,160,96,.3)'"
+      onmouseout="this.style.background='rgba(200,160,96,.04)';this.style.borderColor='rgba(200,160,96,.12)'">
+      <div style="flex:1">
+        <div style="font-size:9px;margin-bottom:2px">${s.name}</div>
+        <div style="color:rgba(200,160,96,.35);font-size:7px;letter-spacing:.08em">${s.nivel} · ${s.goal}</div>
+      </div>
+      <span style="color:rgba(200,160,96,.25)">→</span>
+    </button>
+  `).join('');
+}
+
+function enterAsStudent(id) {
+  setDemoSession('student', id);
+  window.location.href = 'momentum-cliente-soares.html';
+}
+
+// Enter key
+document.addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+
+// ── Particle background ──────────────────────────────────
+(function(){
+  const canvas = document.getElementById('bg-canvas');
+  const ctx = canvas.getContext('2d');
+  let W, H, particles=[], lines=[];
+  const N = 38;
+
+  function resize(){
+    W=canvas.width=window.innerWidth;
+    H=canvas.height=window.innerHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  function rand(a,b){return a+Math.random()*(b-a);}
+
+  for(let i=0;i<N;i++){
+    particles.push({
+      x:rand(0,1),y:rand(0,1),
+      vx:rand(-.0003,.0003),vy:rand(-.0002,.0002),
+      r:rand(.5,1.8),o:rand(.08,.28)
+    });
+  }
+
+  let t=0;
+  function draw(){
+    t++;
+    ctx.clearRect(0,0,W,H);
+
+    // subtle gradient bg
+    const grd=ctx.createRadialGradient(W*.5,H*.5,0,W*.5,H*.5,W*.7);
+    grd.addColorStop(0,'rgba(30,20,12,1)');
+    grd.addColorStop(1,'rgba(10,8,6,1)');
+    ctx.fillStyle=grd; ctx.fillRect(0,0,W,H);
+
+    // move particles
+    particles.forEach(p=>{
+      p.x+=p.vx; p.y+=p.vy;
+      if(p.x<0)p.x=1; if(p.x>1)p.x=0;
+      if(p.y<0)p.y=1; if(p.y>1)p.y=0;
+    });
+
+    // draw connections
+    for(let i=0;i<N;i++){
+      for(let j=i+1;j<N;j++){
+        const a=particles[i],b=particles[j];
+        const dx=(a.x-b.x)*W, dy=(a.y-b.y)*H;
+        const d=Math.sqrt(dx*dx+dy*dy);
+        if(d<120){
+          ctx.beginPath();
+          ctx.moveTo(a.x*W,a.y*H);
+          ctx.lineTo(b.x*W,b.y*H);
+          ctx.strokeStyle=`rgba(138,96,48,${.12*(1-d/120)})`;
+          ctx.lineWidth=.5;
+          ctx.stroke();
+        }
+      }
+    }
+
+    // draw dots
+    particles.forEach(p=>{
+      ctx.beginPath();
+      ctx.arc(p.x*W,p.y*H,p.r,0,Math.PI*2);
+      ctx.fillStyle=`rgba(200,160,96,${p.o})`;
+      ctx.fill();
+    });
+
+    // center glow pulse
+    const pulse = .5+.5*Math.sin(t*.018);
+    const cg=ctx.createRadialGradient(W*.5,H*.5,0,W*.5,H*.5,280);
+    cg.addColorStop(0,`rgba(138,96,48,${.06*pulse})`);
+    cg.addColorStop(1,'transparent');
+    ctx.fillStyle=cg; ctx.fillRect(0,0,W,H);
+
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+</script>
+</body>
+</html>
