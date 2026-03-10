@@ -588,6 +588,11 @@ canvas.mc-an-radar{display:block;margin:0 auto;}
 .lt-hl-lbl{font-size:7.5px;color:rgba(200,160,96,.5);text-transform:uppercase;letter-spacing:.04em;margin-bottom:1px;}
 .lt-hl-sub{font-size:7px;color:rgba(200,160,96,.3);}
 </style>
+  <!-- Firebase compat SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <script src="firebase-config.js"></script>
 </head>
 <body>
 <div class="app-loading" id="app-loading"><div class="app-loading-inner">Momentum</div></div>
@@ -2492,7 +2497,13 @@ function exportWorkout() {
     <div style="height:56px;border:1px solid #e8e0cc"></div>
   </div>
   <div style="text-align:center;padding:20px;font:7px monospace;color:#c0b098;text-transform:uppercase;letter-spacing:.16em">Momentum · Progresso tem direção.</div>
-  </body></html>`;
+  
+  <!-- Firebase compat SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <script src="firebase-config.js"></script>
+</body></html>`;
   const blob=new Blob([html],{type:'text/html'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');a.href=url;a.download=`soares-lv-${date.replace(/\//g,'-')}.html`;
