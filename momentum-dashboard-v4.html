@@ -700,6 +700,14 @@ function epley1RM(kg, reps) {
 function xRM(oneRM, reps) { return oneRM / (1 + reps / 30); }
 function round05(v) { return Math.round(v * 2) / 2; }
 
+// Formata índice de carga para exibição estilizada: 8766 → {major:"8", minor:"766"}
+// Arredonda antes de fatiar para evitar bug com floats do Firebase
+function formatIC(v) {
+  const n = String(Math.round(v));
+  if (n.length <= 3) return { major: n, minor: '' };
+  return { major: n.slice(0, -3), minor: n.slice(-3) };
+}
+
 function capNome(nome) {
   if (!nome) return '';
   if (/[A-ZÁÉÍÓÚÂÊÎÔÛÃÕÇ]/.test(nome.slice(1))) return nome;
@@ -944,11 +952,11 @@ function renderSessions() {
                 <div class="sess-tipo">${sess.tipo}</div>
                 <div class="sess-data">${sess.data}</div>
               </div>
+              ${(({major,minor}) => `
               <div class="sess-ic">
-                <span class="sess-ic-i">${String(sess.indice).slice(0,-3)||'0'}</span>
-                <span style="font-family:'IBM Plex Mono';font-weight:300;font-size:11px;color:rgba(200,160,96,.35)">.</span>
-                <span class="sess-ic-d">${String(sess.indice).slice(-3).padStart(3,'0')}</span>
-              </div>
+                <span class="sess-ic-i">${major}</span>
+                ${minor ? `<span style="font-family:'IBM Plex Mono';font-weight:300;font-size:11px;color:rgba(200,160,96,.35)">.</span><span class="sess-ic-d">${minor}</span>` : ''}
+              </div>`)(formatIC(sess.indice))}
               <div class="sess-bars">
                 <div class="sess-br"><div class="sess-bl">Neural</div><div class="sess-bt"><div class="sess-bf" style="width:${sess.n*100}%;background:#8a6030"></div></div></div>
                 <div class="sess-br"><div class="sess-bl">Mecânica</div><div class="sess-bt"><div class="sess-bf" style="width:${sess.m*100}%;background:#a07040"></div></div></div>
