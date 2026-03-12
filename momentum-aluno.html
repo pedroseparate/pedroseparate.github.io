@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>Momentum</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400;1,600;1,700&family=IBM+Plex+Mono:ital,wght@0,300;0,400;1,300&family=Bebas+Neue&display=swap" rel="stylesheet">
+
+<!-- ─── FIREBASE CONFIG ─────────────────────────────────────────
+     Substitua pelos valores do seu projeto Firebase.
+     Encontre em: Firebase Console → Project Settings → Your apps
+──────────────────────────────────────────────────────────────── -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, doc, getDoc, collection, query, where, orderBy, limit, getDocs }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey:            "COLE_AQUI",
+  authDomain:        "COLE_AQUI",
+  projectId:         "COLE_AQUI",
+  storageBucket:     "COLE_AQUI",
+  messagingSenderId: "COLE_AQUI",
+  appId:             "COLE_AQUI"
+};
+
+const app  = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db   = getFirestore(app);
+const gProvider = new GoogleAuthProvider();
+
+// ─── ADMIN CONFIG ────────────────────────────────────────────────
+// Adicione aqui o email do PT administrador
+const ADMIN_EMAILS = [
+  'joaopedro@momentum.app',   // substitua pelo seu email
+  'admin@momentum.app',
+];
+
+function isAdmin(email) { return ADMIN_EMAILS.includes(email.toLowerCase()); }
+
+// ─── AUTH STATE ──────────────────────────────────────────────────
+onAuthStateChanged(auth, async user => {
+  if (user) {
+    showScreen('loading');
+    try {
+      if (isAdmin(user.email)) {
+        await loadAdminPanel();
+      } else {
+        await loadStudentDashboard(user.email);
+      }
+    } catch(e) {
+      showError('Erro ao carregar dados: ' + e.message);
+    }
+  } else {
+    showScreen('auth');
+  }
+});
+
+async function loadStudentDashboard(email) {
+  const studentData = await loadStudent(email);
+  if (!studentData) { showError('Aluno não encontrado para este email.'); return; }
+  const sessions = await loadRecentSessions(studentData.id);
+  render(studentData, sessions);
+  showScreen('dashboard');
+}
+
+async function loadAdminPanel() {
+  const snap = await getDocs(query(collection(db, 'students'), orderBy('name')));
+  const students = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  renderAdminPanel(students);
+  showScreen('admin');
+}
+
+function renderAdminPanel(students) {
+  const list = document.getElementById('admin-list');
+  list.innerHTML = students.map(s => `
+    <div class="admin-card" onclick="impersonate('${s.id}')">
+      <div class="admin-card-left">
+        <div class="admin-card-name">${s.name}</div>
+        <div class="admin-card-meta">${s.goal || '—'} · ${s.nivel || '—'}</div>
+      </div>
+      <div class="admin-card-right">
+        <div class="admin-card-status ${s.status === 'ativo' ? 'active' : ''}">${s.status || 'ativo'}</div>
+        <div class="admin-card-arrow">→</div>
+      </div>
+    </div>
+  `).join('');
+  document.getElementById('admin-count').textContent = `${students.length} aluno${students.length !== 1 ? 's' : ''}`;
+}
+
+window.impersonate = async (studentId) => {
+  showScreen('loading');
+  try {
+    const snap = await getDoc(doc(db, 'students', studentId));
+    if (!snap.exists()) { showError('Aluno não encontrado.'); return; }
+    const studentData = { id: snap.id, ...snap.data() };
+    const sessions = await loadRecentSessions(studentId);
+    render(studentData, sessions);
+    // Show admin back button in dashboard
+    document.getElementById('admin-back-btn').style.display = 'flex';
+    showScreen('dashboard');
+  } catch(e) {
+    showError('Erro: ' + e.message);
+  }
+};
+
+window.backToAdmin = async () => {
+  document.getElementById('admin-back-btn').style.display = 'none';
+  showScreen('loading');
+  await loadAdminPanel();
+};
+
+// ─── LOAD DATA ───────────────────────────────────────────────────
+async function loadStudent(email) {
+  const q    = query(collection(db, 'students'), where('email', '==', email));
+  const snap = await getDocs(q);
+  if (snap.empty) return null;
+  return { id: snap.docs[0].id, ...snap.docs[0].data() };
+}
+
+async function loadRecentSessions(studentId, n = 12) {
+  const q    = query(
+    collection(db, 'sessions'),
+    where('student_id', '==', studentId),
+    orderBy('date', 'desc'),
+    limit(n)
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+// ─── LOGIN HANDLERS ──────────────────────────────────────────────
+window.loginEmail = async () => {
+  const email = document.getElementById('email').value.trim();
+  const pass  = document.getElementById('pass').value;
+  const btn   = document.getElementById('btnLogin');
+  setLoginState(btn, true);
+  try {
+    await signInWithEmailAndPassword(auth, email, pass);
+  } catch(e) {
+    showAuthError(friendlyError(e.code));
+    setLoginState(btn, false);
+  }
+};
+
+window.loginGoogle = async () => {
+  const btn = document.getElementById('btnGoogle');
+  setLoginState(btn, true);
+  try {
+    await signInWithPopup(auth, gProvider);
+  } catch(e) {
+    showAuthError(friendlyError(e.code));
+    setLoginState(btn, false);
+  }
+};
+
+window.logout = () => signOut(auth);
+
+function setLoginState(btn, loading) {
+  btn.disabled = loading;
+  btn.style.opacity = loading ? '.5' : '1';
+}
+
+function friendlyError(code) {
+  const map = {
+    'auth/invalid-credential':  'Email ou senha incorretos.',
+    'auth/user-not-found':      'Email não encontrado.',
+    'auth/wrong-password':      'Senha incorreta.',
+    'auth/too-many-requests':   'Muitas tentativas. Aguarde e tente novamente.',
+    'auth/popup-closed-by-user':'Login cancelado.',
+  };
+  return map[code] || 'Erro ao fazer login. Tente novamente.';
+}
+
+// ─── RENDER ──────────────────────────────────────────────────────
+function render(student, sessions) {
+  renderWelcome(student);
+  renderNextWorkout(student);
+  renderStats(student, sessions);
+  renderHistory(sessions);
+  renderCharts(sessions);
+}
+
+function renderWelcome(s) {
+  const hour  = new Date().getHours();
+  const greet = hour < 12 ? 'Bom dia' : hour < 18 ? 'Boa tarde' : 'Boa noite';
+
+  // Pick best positive stat
+  const highlights = buildHighlights(s);
+  const best       = highlights[0];
+
+  document.getElementById('greet-text').textContent = greet + ',';
+  document.getElementById('greet-name').textContent = s.name.split(' ')[0] + '.';
+  document.getElementById('welcome-highlight').textContent = best.label;
+  document.getElementById('welcome-value').textContent     = best.value;
+  document.getElementById('welcome-sub').textContent       = best.sub;
+
+  if (s.photo_url) {
+    document.getElementById('hero-photo').style.backgroundImage = `url(${s.photo_url})`;
+    document.getElementById('hero-photo').style.display = 'block';
+  }
+
+  // Render all positive stats pills
+  const pills = document.getElementById('welcome-pills');
+  pills.innerHTML = highlights.slice(1, 4).map(h => `
+    <div class="pill">
+      <span class="pill-label">${h.label}</span>
+      <span class="pill-val">${h.value}</span>
+    </div>
+  `).join('');
+}
+
+function buildHighlights(s) {
+  const h = [];
+  const sc = s.scores || {};
+  const ritmo = s.ritmo_estado || '';
+
+  if (ritmo === 'alta' || ritmo === 'moderada')
+    h.push({ label: 'Ritmo de adaptação', value: ritmo === 'alta' ? '↑ Alta' : '↑ Moderada', sub: 'ciclo atual' });
+
+  if (sc.mecanica >= 7)
+    h.push({ label: 'Score mecânico', value: sc.mecanica.toFixed(1), sub: 'de 10' });
+
+  if (sc.neural >= 6)
+    h.push({ label: 'Score neural', value: sc.neural.toFixed(1), sub: 'de 10' });
+
+  if (s.divisao)
+    h.push({ label: 'Divisão', value: s.divisao, sub: s.mesociclo || '' });
+
+  if (s.goal)
+    h.push({ label: 'Objetivo', value: s.goal, sub: `nível ${s.nivel || ''}` });
+
+  // Fallback
+  if (h.length === 0)
+    h.push({ label: 'Bem-vindo', value: s.name.split(' ')[0], sub: 'Momentum' });
+
+  return h;
+}
+
+function renderNextWorkout(s) {
+  // Next workout derived from mesociclo + divisao
+  // In a full implementation, this comes from a 'prescricoes' collection
+  // For now, show mesociclo info
+  const el = document.getElementById('next-workout');
+  el.innerHTML = `
+    <div class="section-label">Próximo treino</div>
+    <div class="next-title">${s.mesociclo || 'Treino prescrito'}</div>
+    <div class="next-sub">${s.divisao || ''} · Semana ${s.semanas_total || '—'}</div>
+    <div class="next-note">Consulte seu PT para o treino de hoje.</div>
+  `;
+}
+
+function renderStats(student, sessions) {
+  if (!sessions.length) return;
+  const last8 = sessions.slice(0, 8);
+
+  const avgIC   = avg(last8.map(s => s.ic_executado || 0));
+  const avgPSE  = avg(last8.map(s => s.pse || 0));
+  const streak  = calcStreak(sessions);
+
+  document.getElementById('stat-ic').textContent   = Math.round(avgIC).toLocaleString('pt-BR');
+  document.getElementById('stat-pse').textContent  = avgPSE.toFixed(1);
+  document.getElementById('stat-str').textContent  = streak;
+  document.getElementById('stat-sess').textContent = sessions.length;
+}
+
+function calcStreak(sessions) {
+  // Count consecutive weeks with at least 1 session
+  if (!sessions.length) return 0;
+  const sorted = [...sessions].sort((a,b) => b.date.localeCompare(a.date));
+  let streak = 1;
+  for (let i = 1; i < sorted.length; i++) {
+    const d1 = new Date(sorted[i-1].date);
+    const d2 = new Date(sorted[i].date);
+    const diff = (d1 - d2) / (1000*60*60*24);
+    if (diff <= 7) streak++;
+    else break;
+  }
+  return streak;
+}
+
+function renderHistory(sessions) {
+  const container = document.getElementById('history-list');
+  container.innerHTML = sessions.slice(0, 6).map(s => `
+    <div class="hist-item" onclick="toggleSession('${s.id}')">
+      <div class="hist-left">
+        <div class="hist-date">${formatDate(s.date)}</div>
+        <div class="hist-tipo">${s.tipo || '—'}</div>
+      </div>
+      <div class="hist-right">
+        <div class="hist-ic">${Math.round(s.ic_executado || 0).toLocaleString('pt-BR')}</div>
+        <div class="hist-ic-label">IC</div>
+      </div>
+      <div class="hist-pse">PSE ${(s.pse||0).toFixed(1)}</div>
+    </div>
+    <div class="hist-detail" id="detail-${s.id}" style="display:none">
+      ${renderSessionDetail(s)}
+    </div>
+  `).join('');
+}
+
+function renderSessionDetail(s) {
+  const exs = (s.exercicios || []).map(e => `
+    <div class="ex-row">
+      <span class="ex-nome">${e.nome}</span>
+      <span class="ex-data">${e.s}×${e.r} · ${e.kg}kg · PSE ${(e.pse||0).toFixed(1)}</span>
+    </div>
+  `).join('');
+  return `<div class="session-exs">${exs}</div>`;
+}
+
+window.toggleSession = (id) => {
+  const el = document.getElementById('detail-' + id);
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+};
+
+function renderCharts(sessions) {
+  if (sessions.length < 2) return;
+  const sorted = [...sessions].sort((a,b) => a.date.localeCompare(b.date));
+  const last10 = sorted.slice(-10);
+
+  drawLineChart('chart-ic',  last10.map(s => s.ic_executado || 0),  last10.map(s => s.date), 'IC');
+  drawLineChart('chart-pse', last10.map(s => s.pse || 0),           last10.map(s => s.date), 'PSE');
+}
+
+function drawLineChart(svgId, vals, dates, label) {
+  const svg = document.getElementById(svgId);
+  if (!svg || !vals.length) return;
+  const W = 312, H = 72, pad = 6;
+  const mn = Math.min(...vals) * .92;
+  const mx = Math.max(...vals) * 1.04;
+  const n  = vals.length;
+  const step = (W - pad*2) / Math.max(n-1, 1);
+  const xp = i => pad + i * step;
+  const yp = v => H - pad - (v - mn) / (mx - mn) * (H - pad*2);
+  const pts = vals.map((v,i) => ({ x: xp(i), y: yp(v), v, d: dates[i] }));
+  const area = `M ${pts[0].x},${H} ` + pts.map(p=>`L ${p.x},${p.y}`).join(' ') + ` L ${pts[n-1].x},${H} Z`;
+  const line = `M ` + pts.map(p=>`${p.x},${p.y}`).join(' L ');
+  const last = pts[n-1];
+  const fmt  = v => label === 'IC' ? Math.round(v).toLocaleString('pt-BR') : v.toFixed(1);
+
+  svg.innerHTML = `
+    <defs>
+      <linearGradient id="g${svgId}" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#c8a060" stop-opacity="0.20"/>
+        <stop offset="100%" stop-color="#c8a060" stop-opacity="0.02"/>
+      </linearGradient>
+    </defs>
+    <path d="${area}" fill="url(#g${svgId})"/>
+    <path d="${line}" fill="none" stroke="#c8a060" stroke-width="1.5" stroke-linejoin="round"/>
+    ${pts.map((p,i) => `
+      <circle cx="${p.x}" cy="${p.y}" r="${i===n-1?4.5:2}" fill="${i===n-1?'#e8cc90':'#a07840'}"/>
+    `).join('')}
+    <rect x="${last.x-28}" y="${last.y-20}" width="56" height="14" rx="1" fill="rgba(14,11,8,.9)"/>
+    <text x="${last.x}" y="${last.y-9}" font-family="IBM Plex Mono" font-size="8.5" font-weight="600"
+      fill="#e8cc90" text-anchor="middle">${fmt(last.v)}</text>
+  `;
+}
+
+// ─── SOCIAL CARD ─────────────────────────────────────────────────
+window.openSocialCard = () => {
+  document.getElementById('social-modal').classList.add('open');
+};
+window.closeSocialCard = () => {
+  document.getElementById('social-modal').classList.remove('open');
+};
+
+// ─── UTILS ───────────────────────────────────────────────────────
+function avg(arr) { return arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : 0; }
+function formatDate(d) {
+  if (!d) return '—';
+  const [y,m,day] = d.split('-');
+  return `${day}/${m}`;
+}
+
+// ─── SCREEN MANAGEMENT ───────────────────────────────────────────
+function showScreen(name) {
+  ['auth','loading','dashboard','error','admin'].forEach(s => {
+    document.getElementById('screen-' + s).style.display = s === name ? 'flex' : 'none';
+  });
+}
+function showError(msg) {
+  document.getElementById('error-msg').textContent = msg;
+  showScreen('error');
+}
+function showAuthError(msg) {
+  document.getElementById('auth-error').textContent = msg;
+  document.getElementById('auth-error').style.display = 'block';
+}
+</script>
+
+<style>
+/* ─── RESET & BASE ─────────────────────────────────────────────── */
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+
+:root {
+  --gold:#c8a060; --gold2:#ddb870; --gold3:#e8cc90;
+  --copper:#8a6030; --copper2:#a07840;
+  --ink:rgba(232,210,160,.92); --ink2:rgba(200,170,110,.65); --ink3:rgba(180,150,90,.38);
+  --night:#0e0b08; --night2:#16120d; --night3:#1e1810;
+  --b:rgba(200,160,96,.10); --b2:rgba(200,160,96,.18);
+}
+
+html, body {
+  height:100%; background:var(--night);
+  font-family:'IBM Plex Mono', monospace;
+  color:var(--ink); overflow-x:hidden;
+}
+
+/* Noise grain overlay */
+body::before {
+  content:'';
+  position:fixed; inset:0; pointer-events:none; z-index:999;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='.025'/%3E%3C/svg%3E");
+  opacity:.4;
+}
+
+/* ─── ADMIN PANEL ──────────────────────────────────────────────── */
+#screen-admin {
+  flex-direction:column; align-items:stretch;
+  max-width:480px; margin:0 auto;
+  padding:0 0 40px;
+}
+.admin-header {
+  padding:32px 24px 20px;
+  border-bottom:1px solid var(--b);
+  display:flex; flex-direction:column; gap:4px;
+}
+.admin-logo {
+  font-family:'Cormorant Garamond',serif; font-style:italic; font-weight:600;
+  font-size:36px; color:var(--gold); letter-spacing:.04em;
+}
+.admin-title {
+  font-size:8px; letter-spacing:.28em; text-transform:uppercase; color:var(--ink3);
+}
+.admin-meta {
+  display:flex; justify-content:space-between; align-items:center;
+  margin-top:12px;
+}
+.admin-count { font-size:10px; color:var(--ink2); }
+.admin-logout {
+  font-size:8px; letter-spacing:.16em; text-transform:uppercase;
+  color:var(--ink3); background:none; border:none; cursor:pointer;
+  transition:color .2s;
+}
+.admin-logout:hover { color:var(--gold); }
+
+.admin-list { padding:0 24px; margin-top:4px; }
+.admin-card {
+  display:flex; justify-content:space-between; align-items:center;
+  padding:16px 0; border-bottom:1px solid var(--b);
+  cursor:pointer; transition:background .15s;
+}
+.admin-card:hover .admin-card-name { color:var(--gold2); }
+.admin-card:hover .admin-card-arrow { color:var(--gold); transform:translateX(3px); }
+.admin-card-name {
+  font-family:'Cormorant Garamond',serif; font-style:italic; font-weight:600;
+  font-size:20px; color:var(--ink); transition:color .2s; margin-bottom:3px;
+}
+.admin-card-meta { font-size:9px; color:var(--ink3); letter-spacing:.04em; }
+.admin-card-right { display:flex; flex-direction:column; align-items:flex-end; gap:4px; }
+.admin-card-status {
+  font-size:7.5px; letter-spacing:.16em; text-transform:uppercase;
+  color:var(--ink3); padding:2px 8px; border:1px solid var(--b); border-radius:2px;
+}
+.admin-card-status.active { color:var(--gold2); border-color:rgba(200,160,96,.3); }
+.admin-card-arrow {
+  font-size:14px; color:var(--ink3); transition:transform .2s, color .2s;
+}
+
+/* Admin back button inside dashboard */
+#admin-back-btn {
+  display:none;
+  position:fixed; top:0; left:0; right:0; z-index:50;
+  background:rgba(14,11,8,.95); border-bottom:1px solid var(--b);
+  padding:10px 20px;
+  justify-content:space-between; align-items:center;
+  backdrop-filter:blur(8px);
+}
+.admin-back-label { font-size:8px; letter-spacing:.2em; text-transform:uppercase; color:var(--ink3); }
+.admin-back-link {
+  font-size:9px; letter-spacing:.16em; text-transform:uppercase;
+  color:var(--gold2); background:none; border:none; cursor:pointer;
+  font-family:'IBM Plex Mono',monospace; transition:color .2s;
+}
+.admin-back-link:hover { color:var(--gold); }
+
+/* ─── SCREENS ──────────────────────────────────────────────────── */
+.screen { display:none; min-height:100vh; width:100%; flex-direction:column; align-items:center; justify-content:center; }
+
+/* ─── AUTH SCREEN ──────────────────────────────────────────────── */
+#screen-auth { padding:40px 24px; background:var(--night); }
+
+.auth-logo {
+  font-family:'Cormorant Garamond',serif;
+  font-style:italic; font-weight:600;
+  font-size:52px; color:var(--gold);
+  letter-spacing:.04em; text-align:center;
+  margin-bottom:4px;
+}
+.auth-sub {
+  font-size:8px; letter-spacing:.28em; text-transform:uppercase;
+  color:var(--ink3); text-align:center; margin-bottom:48px;
+}
+.auth-box {
+  width:100%; max-width:320px;
+  display:flex; flex-direction:column; gap:12px;
+}
+.auth-input {
+  width:100%; padding:12px 16px;
+  background:rgba(200,160,96,.05);
+  border:1px solid var(--b2);
+  border-radius:2px; outline:none;
+  font-family:'IBM Plex Mono',monospace;
+  font-size:13px; color:var(--ink);
+  transition:border-color .2s;
+}
+.auth-input::placeholder { color:var(--ink3); }
+.auth-input:focus { border-color:var(--gold); }
+.auth-input:-webkit-autofill {
+  -webkit-box-shadow:0 0 0 30px #16120d inset;
+  -webkit-text-fill-color:var(--ink);
+}
+.btn-primary {
+  width:100%; padding:13px;
+  background:var(--gold); color:var(--night);
+  border:none; border-radius:2px; cursor:pointer;
+  font-family:'Cormorant Garamond',serif;
+  font-style:italic; font-weight:600;
+  font-size:16px; letter-spacing:.06em;
+  transition:background .2s, opacity .2s;
+}
+.btn-primary:hover { background:var(--gold2); }
+.btn-divider {
+  display:flex; align-items:center; gap:12px;
+  font-size:8px; letter-spacing:.2em; color:var(--ink3); text-transform:uppercase;
+}
+.btn-divider::before, .btn-divider::after {
+  content:''; flex:1; height:1px; background:var(--b);
+}
+.btn-google {
+  width:100%; padding:12px;
+  background:transparent; border:1px solid var(--b2); border-radius:2px; cursor:pointer;
+  font-family:'IBM Plex Mono',monospace; font-size:12px;
+  color:var(--ink2); display:flex; align-items:center; justify-content:center; gap:10px;
+  transition:border-color .2s, color .2s;
+}
+.btn-google:hover { border-color:var(--gold); color:var(--ink); }
+.btn-google svg { width:16px; height:16px; flex-shrink:0; }
+.auth-error {
+  display:none; font-size:10px; color:#e07060;
+  text-align:center; letter-spacing:.04em;
+}
+
+/* ─── LOADING SCREEN ───────────────────────────────────────────── */
+#screen-loading { background:var(--night); }
+.loading-logo {
+  font-family:'Cormorant Garamond',serif;
+  font-style:italic; font-weight:600;
+  font-size:42px; color:var(--gold);
+  animation: pulse 1.8s ease-in-out infinite;
+}
+@keyframes pulse { 0%,100%{opacity:.4} 50%{opacity:1} }
+
+/* ─── ERROR SCREEN ─────────────────────────────────────────────── */
+#screen-error { background:var(--night); padding:40px 24px; text-align:center; }
+.error-msg { font-size:12px; color:var(--ink2); margin-bottom:24px; line-height:1.8; }
+.btn-back {
+  font-family:'IBM Plex Mono',monospace; font-size:10px;
+  letter-spacing:.2em; text-transform:uppercase; color:var(--gold);
+  background:none; border:1px solid var(--b2); padding:10px 20px; cursor:pointer; border-radius:2px;
+}
+
+/* ─── DASHBOARD ────────────────────────────────────────────────── */
+#screen-dashboard {
+  flex-direction:column; align-items:stretch;
+  max-width:480px; margin:0 auto;
+  padding-bottom:32px;
+}
+
+/* ─── HERO WELCOME ─────────────────────────────────────────────── */
+.hero {
+  position:relative; min-height:320px;
+  overflow:hidden; background:var(--night2);
+  margin-bottom:0;
+}
+#hero-photo {
+  display:none; position:absolute; inset:0;
+  background-size:cover; background-position:center 20%;
+  filter:blur(1.5px) brightness(.75);
+}
+.hero-vignette {
+  position:absolute; inset:0;
+  background:radial-gradient(ellipse 60% 70% at 50% 45%,
+    transparent 0%, transparent 25%,
+    rgba(14,11,8,.45) 55%, rgba(14,11,8,.85) 75%, rgba(14,11,8,1) 92%);
+}
+.hero-grad-bottom {
+  position:absolute; bottom:0; left:0; right:0; height:55%;
+  background:linear-gradient(to top,var(--night) 0%,rgba(14,11,8,.9) 40%,transparent 100%);
+}
+.hero-content {
+  position:relative; z-index:2;
+  padding:28px 24px 24px;
+  display:flex; flex-direction:column; justify-content:space-between;
+  min-height:320px;
+}
+.hero-top { display:flex; justify-content:space-between; align-items:flex-start; }
+.brand { font-size:7.5px; letter-spacing:.30em; text-transform:uppercase; color:var(--ink3); }
+.logout-btn {
+  font-size:8px; letter-spacing:.16em; text-transform:uppercase;
+  color:var(--ink3); background:none; border:none; cursor:pointer;
+  padding:4px; transition:color .2s;
+}
+.logout-btn:hover { color:var(--gold); }
+.hero-greeting {
+  font-family:'Cormorant Garamond',serif; font-style:italic; font-weight:300;
+  font-size:18px; color:var(--ink2); margin-bottom:2px;
+}
+.hero-name {
+  font-family:'Cormorant Garamond',serif; font-style:italic; font-weight:600;
+  font-size:52px; line-height:1; color:var(--gold); margin-bottom:8px;
+}
+.accent-line { width:28px; height:1px; background:var(--copper); margin-bottom:16px; }
+
+/* Highlight */
+.hero-highlight {
+  display:flex; align-items:baseline; gap:8px; margin-bottom:4px;
+}
+.h-label { font-size:7px; letter-spacing:.2em; text-transform:uppercase; color:var(--ink3); }
+.h-value {
+  font-family:'Bebas Neue',sans-serif; font-size:32px; line-height:1;
+  color:var(--ink); letter-spacing:.04em;
+}
+.h-sub { font-size:9px; color:var(--ink3); }
+
+/* Pills */
+.welcome-pills { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+.pill {
+  display:flex; flex-direction:column;
+  padding:6px 10px; border:1px solid var(--b); border-radius:2px;
+  background:rgba(200,160,96,.04);
+}
+.pill-label { font-size:6.5px; letter-spacing:.16em; text-transform:uppercase; color:var(--ink3); margin-bottom:2px; }
+.pill-val { font-size:11px; color:var(--ink2); }
+
+/* ─── SECTION WRAPPER ──────────────────────────────────────────── */
+.section {
+  padding:24px 24px 0;
+  animation:fadeUp .4s ease both;
+}
+@keyframes fadeUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:none} }
+.section:nth-child(2) { animation-delay:.05s }
+.section:nth-child(3) { animation-delay:.10s }
+.section:nth-child(4) { animation-delay:.15s }
+.section:nth-child(5) { animation-delay:.20s }
+
+.section-label {
+  font-size:7.5px; letter-spacing:.28em; text-transform:uppercase;
+  color:var(--ink3); margin-bottom:14px;
+  padding-bottom:10px; border-bottom:1px solid var(--b);
+}
+
+/* ─── NEXT WORKOUT ─────────────────────────────────────────────── */
+.next-title {
+  font-family:'Cormorant Garamond',serif; font-style:italic; font-weight:600;
+  font-size:26px; color:var(--gold); line-height:1.1; margin-bottom:4px;
+}
+.next-sub { font-size:10px; color:var(--ink2); margin-bottom:6px; }
+.next-note { font-size:9px; color:var(--ink3); font-style:italic; }
+
+/* ─── STATS ROW ────────────────────────────────────────────────── */
+.stats-row {
+  display:grid; grid-template-columns:repeat(4,1fr); gap:1px;
+  background:var(--b); border-radius:2px; overflow:hidden;
+  margin-top:0;
+}
+.stat-cell {
+  background:var(--night); padding:14px 12px;
+  display:flex; flex-direction:column; gap:4px;
+}
+.stat-cell-label { font-size:6.5px; letter-spacing:.16em; text-transform:uppercase; color:var(--ink3); }
+.stat-cell-val {
+  font-family:'Bebas Neue',sans-serif; font-size:28px; line-height:1;
+  color:var(--ink); letter-spacing:.03em;
+}
+.stat-cell-sub { font-size:7px; color:var(--ink3); }
+
+/* ─── CHARTS ───────────────────────────────────────────────────── */
+.chart-row { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+.chart-card { background:var(--night2); padding:16px; border-radius:2px; border:1px solid var(--b); }
+.chart-card-label { font-size:7px; letter-spacing:.2em; text-transform:uppercase; color:var(--ink3); margin-bottom:10px; }
+.chart-card svg { width:100%; height:72px; overflow:visible; display:block; }
+
+/* ─── HISTORY ──────────────────────────────────────────────────── */
+.hist-item {
+  display:grid; grid-template-columns:1fr auto;
+  align-items:center; gap:8px;
+  padding:12px 0; border-bottom:1px solid var(--b);
+  cursor:pointer; transition:background .15s; position:relative;
+}
+.hist-item:hover { background:rgba(200,160,96,.03); }
+.hist-date { font-size:8px; color:var(--ink3); margin-bottom:3px; }
+.hist-tipo {
+  font-family:'Cormorant Garamond',serif; font-style:italic;
+  font-size:17px; color:var(--ink);
+}
+.hist-right { text-align:right; }
+.hist-ic { font-family:'Bebas Neue',sans-serif; font-size:22px; color:var(--gold2); }
+.hist-ic-label { font-size:7px; color:var(--ink3); letter-spacing:.1em; }
+.hist-pse {
+  position:absolute; right:0; bottom:12px;
+  font-size:8px; color:var(--ink3);
+}
+.hist-detail {
+  padding:8px 0 12px; border-bottom:1px solid var(--b);
+  background:rgba(200,160,96,.02);
+}
+.session-exs { display:flex; flex-direction:column; gap:6px; }
+.ex-row { display:flex; justify-content:space-between; align-items:baseline; }
+.ex-nome { font-size:10px; color:var(--ink2); }
+.ex-data { font-size:9px; color:var(--ink3); }
+
+/* ─── SOCIAL CARD ──────────────────────────────────────────────── */
+.social-btn {
+  width:100%; padding:14px;
+  background:transparent; border:1px solid var(--b2); border-radius:2px; cursor:pointer;
+  font-family:'Cormorant Garamond',serif; font-style:italic; font-weight:600;
+  font-size:16px; color:var(--gold2); letter-spacing:.06em;
+  transition:border-color .2s, background .2s;
+  display:flex; align-items:center; justify-content:center; gap:8px;
+}
+.social-btn:hover { border-color:var(--gold); background:rgba(200,160,96,.04); }
+
+.modal-overlay {
+  display:none; position:fixed; inset:0; z-index:100;
+  background:rgba(0,0,0,.85); align-items:center; justify-content:center;
+  padding:24px;
+}
+.modal-overlay.open { display:flex; }
+.modal-box {
+  background:var(--night2); border:1px solid var(--b2); border-radius:4px;
+  padding:28px 24px; width:100%; max-width:360px;
+}
+.modal-title {
+  font-family:'Cormorant Garamond',serif; font-style:italic; font-weight:600;
+  font-size:24px; color:var(--gold); margin-bottom:6px;
+}
+.modal-sub { font-size:9px; color:var(--ink3); letter-spacing:.1em; margin-bottom:20px; }
+.modal-options { display:flex; flex-direction:column; gap:8px; margin-bottom:20px; }
+.modal-opt {
+  padding:12px 14px; border:1px solid var(--b); border-radius:2px; cursor:pointer;
+  font-size:11px; color:var(--ink2); transition:border-color .2s, color .2s;
+  display:flex; justify-content:space-between; align-items:center;
+}
+.modal-opt:hover { border-color:var(--gold); color:var(--ink); }
+.modal-opt span { font-size:9px; color:var(--ink3); }
+.modal-close {
+  width:100%; padding:11px;
+  background:none; border:1px solid var(--b); border-radius:2px; cursor:pointer;
+  font-family:'IBM Plex Mono',monospace; font-size:10px;
+  letter-spacing:.18em; text-transform:uppercase; color:var(--ink3);
+  transition:color .2s;
+}
+.modal-close:hover { color:var(--ink); }
+</style>
+</head>
+<body>
+
+<!-- ─── ADMIN SCREEN ──────────────────────────────────────────── -->
+<div id="screen-admin" class="screen">
+  <div class="admin-header">
+    <div class="admin-logo">momentum</div>
+    <div class="admin-title">painel do personal</div>
+    <div class="admin-meta">
+      <div class="admin-count" id="admin-count">— alunos</div>
+      <button class="admin-logout" onclick="logout()">sair ×</button>
+    </div>
+  </div>
+  <div class="admin-list" id="admin-list"></div>
+</div>
+
+<!-- ─── ADMIN BACK BAR (inside dashboard) ────────────────────── -->
+<div id="admin-back-btn">
+  <div class="admin-back-label">visualizando como aluno</div>
+  <button class="admin-back-link" onclick="backToAdmin()">← painel admin</button>
+</div>
+
+<!-- ─── AUTH SCREEN ───────────────────────────────────────────── -->
+<div id="screen-auth" class="screen" style="display:flex">
+  <div class="auth-logo">momentum</div>
+  <div class="auth-sub">personal training</div>
+
+  <div class="auth-box">
+    <input id="email" class="auth-input" type="email" placeholder="seu@email.com" autocomplete="email">
+    <input id="pass"  class="auth-input" type="password" placeholder="senha" autocomplete="current-password"
+      onkeydown="if(event.key==='Enter')loginEmail()">
+    <button id="btnLogin" class="btn-primary" onclick="loginEmail()">Entrar</button>
+    <div class="btn-divider">ou</div>
+    <button id="btnGoogle" class="btn-google" onclick="loginGoogle()">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+      </svg>
+      Entrar com Google
+    </button>
+    <div id="auth-error" class="auth-error"></div>
+  </div>
+</div>
+
+<!-- ─── LOADING ───────────────────────────────────────────────── -->
+<div id="screen-loading" class="screen">
+  <div class="loading-logo">momentum</div>
+</div>
+
+<!-- ─── ERROR ────────────────────────────────────────────────── -->
+<div id="screen-error" class="screen">
+  <div class="auth-logo" style="font-size:36px;margin-bottom:16px">momentum</div>
+  <div class="error-msg" id="error-msg"></div>
+  <button class="btn-back" onclick="showScreen('auth')">← Voltar ao login</button>
+</div>
+
+<!-- ─── DASHBOARD ─────────────────────────────────────────────── -->
+<div id="screen-dashboard" class="screen">
+
+  <!-- HERO -->
+  <div class="hero">
+    <div id="hero-photo"></div>
+    <div class="hero-vignette"></div>
+    <div class="hero-grad-bottom"></div>
+    <div class="hero-content">
+      <div class="hero-top">
+        <div class="brand">Momentum</div>
+        <button class="logout-btn" onclick="logout()">sair ×</button>
+      </div>
+      <div>
+        <div class="hero-greeting" id="greet-text">Bom dia,</div>
+        <div class="hero-name" id="greet-name">—</div>
+        <div class="accent-line"></div>
+        <div class="h-label" id="welcome-highlight"></div>
+        <div class="hero-highlight">
+          <div class="h-value" id="welcome-value">—</div>
+          <div class="h-sub" id="welcome-sub"></div>
+        </div>
+        <div class="welcome-pills" id="welcome-pills"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STATS ROW -->
+  <div class="section" style="padding-top:20px">
+    <div class="stats-row">
+      <div class="stat-cell">
+        <div class="stat-cell-label">Sessões</div>
+        <div class="stat-cell-val" id="stat-sess">—</div>
+        <div class="stat-cell-sub">histórico</div>
+      </div>
+      <div class="stat-cell">
+        <div class="stat-cell-label">Streak</div>
+        <div class="stat-cell-val" id="stat-str">—</div>
+        <div class="stat-cell-sub">semanas</div>
+      </div>
+      <div class="stat-cell">
+        <div class="stat-cell-label">IC médio</div>
+        <div class="stat-cell-val" id="stat-ic">—</div>
+        <div class="stat-cell-sub">últimas 8</div>
+      </div>
+      <div class="stat-cell">
+        <div class="stat-cell-label">PSE médio</div>
+        <div class="stat-cell-val" id="stat-pse">—</div>
+        <div class="stat-cell-sub">últimas 8</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- NEXT WORKOUT -->
+  <div class="section">
+    <div id="next-workout">
+      <div class="section-label">Próximo treino</div>
+      <div class="next-title" style="color:var(--ink3)">Carregando…</div>
+    </div>
+  </div>
+
+  <!-- CHARTS -->
+  <div class="section">
+    <div class="section-label">Evolução</div>
+    <div class="chart-row">
+      <div class="chart-card">
+        <div class="chart-card-label">Índice de Carga</div>
+        <svg id="chart-ic" viewBox="0 0 312 72" preserveAspectRatio="none"></svg>
+      </div>
+      <div class="chart-card">
+        <div class="chart-card-label">PSE médio</div>
+        <svg id="chart-pse" viewBox="0 0 312 72" preserveAspectRatio="none"></svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- HISTORY -->
+  <div class="section">
+    <div class="section-label">Histórico recente</div>
+    <div id="history-list"></div>
+  </div>
+
+  <!-- SOCIAL CARD -->
+  <div class="section" style="padding-bottom:32px">
+    <div class="section-label">Compartilhar</div>
+    <button class="social-btn" onclick="openSocialCard()">
+      ↗ Gerar social card
+    </button>
+  </div>
+
+</div>
+
+<!-- ─── SOCIAL MODAL ──────────────────────────────────────────── -->
+<div id="social-modal" class="modal-overlay" onclick="if(event.target===this)closeSocialCard()">
+  <div class="modal-box">
+    <div class="modal-title">Social card</div>
+    <div class="modal-sub">Escolha o que destacar</div>
+    <div class="modal-options">
+      <div class="modal-opt">Destaque de carga <span>PR recente →</span></div>
+      <div class="modal-opt">Evolução de IC <span>últimas semanas →</span></div>
+      <div class="modal-opt">Frequência em alta <span>streak atual →</span></div>
+    </div>
+    <button class="modal-close" onclick="closeSocialCard()">fechar</button>
+  </div>
+</div>
+
+</body>
+</html>
