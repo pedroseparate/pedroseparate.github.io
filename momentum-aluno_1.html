@@ -786,7 +786,7 @@ function buildICChart(sess){
     const isLast=i===items.length-1;
     return `<div class="ic-bar-col">
       <div class="ic-bar" style="height:${h}px;background:${isLast?'var(--gold)':'var(--copper)'};opacity:${isLast?1:0.55}"></div>
-      <div class="ic-bar-lbl">${(ss.data||'').slice(0,5)}</div>
+      <div class="ic-bar-lbl">${(ss.date||ss.data||'').slice(0,5)}</div>
     </div>`;
   }).join('');
 
@@ -817,7 +817,7 @@ function buildPRs(sess){
       <div class="pr-ico">🏋️</div>
       <div class="pr-info">
         <div class="pr-exname">${pr.nome}</div>
-        <div class="pr-desc">${pr.data||''} · ${pr.s}×${pr.r} reps</div>
+        <div class="pr-desc">${pr.date||pr.data||''} · ${pr.s}×${pr.r} reps</div>
       </div>
       <div class="pr-right">
         <div class="pr-kg">${pr.kg>0?pr.kg:'—'}</div>
@@ -865,7 +865,7 @@ function renderHistorico(){
         <div class="hist-row" onclick="toggleHistRow(${i})">
           <div class="hist-hd">
             <div class="hist-tipo">${ss.tipo||ss.treino_id||'—'}</div>
-            <div class="hist-date">${ss.data||''}</div>
+            <div class="hist-date">${ss.date||ss.data||''}</div>
           </div>
           <div class="hist-bar-bg">
             <div class="hist-bar-fill" style="width:${Math.min((ss.pse||0)/10,1)*100}%"></div>
@@ -1282,7 +1282,7 @@ function openModal(type){
     S.sessions.forEach(ss=>{
       (ss.exercicios||[]).forEach(ex=>{
         if((ex.nome||ex.n||'')===nome)
-          historico.push({data:ss.data,kg:ex.kg||0,r:ex.r||ex.reps||0,s:ex.s||3,pse:ex.pse});
+          historico.push({data:ss.date||ss.data,kg:ex.kg||0,r:ex.r||ex.reps||0,s:ex.s||3,pse:ex.pse});
       });
     });
     historico.sort((a,b)=>(b.kg||0)-(a.kg||0));
@@ -1310,7 +1310,7 @@ function openModal(type){
       <div class="modal-prose">
         ${sess.map(ss=>`
           <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--b);font-size:9px">
-            <span style="color:var(--ink3)">${ss.data||'—'} · ${ss.tipo||'—'}</span>
+            <span style="color:var(--ink3)">${ss.date||ss.data||'—'} · ${ss.tipo||'—'}</span>
             <span style="color:var(--gold)">${Math.round(ss.indice||ss.indice_carga||0)}</span>
           </div>`).join('')}
       </div>`;

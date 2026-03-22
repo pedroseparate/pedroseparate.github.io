@@ -853,7 +853,7 @@ function calcLongitudinalChips(s, sessoes) {
     const bloco1 = sessoes.slice(0, 4);
     const bloco2 = sessoes.slice(4, 8);
     if (bloco2.length >= 2) {
-      const ritmo = ss => ss.reduce((s, x) => s + (x.indice||0) / Math.max(x.pse||7, 1), 0) / ss.length;
+      const ritmo = ss => ss.reduce((s, x) => s + (x.indice||x.indice_carga||0) / Math.max(x.pse||7, 1), 0) / ss.length;
       const delta = (ritmo(bloco1) - ritmo(bloco2)) / ritmo(bloco2);
       if (delta <= -0.10)
         chips.push({c:'alert', t:`⚠ ritmo_em_queda — IC÷PSE ${Math.round(Math.abs(delta)*100)}% abaixo`});
@@ -865,8 +865,8 @@ function calcLongitudinalChips(s, sessoes) {
   // pse_ic_divergência (última sessão)
   if (sessoes.length >= 4) {
     const ultima = sessoes[0];
-    const mediaIC = sessoes.slice(1, 9).reduce((s, x) => s + (x.indice||0), 0) / Math.min(sessoes.length-1, 8);
-    if ((ultima.pse||0) >= 7.5 && (ultima.indice||0) < mediaIC * 0.85)
+    const mediaIC = sessoes.slice(1, 9).reduce((s, x) => s + (x.indice||x.indice_carga||0), 0) / Math.min(sessoes.length-1, 8);
+    if ((ultima.pse||0) >= 7.5 && (ultima.indice||ultima.indice_carga||0) < mediaIC * 0.85)
       chips.push({c:'alert', t:'⚠ pse_ic_divergência — esforço alto, IC abaixo do usual'});
   }
 
@@ -876,13 +876,13 @@ function calcLongitudinalChips(s, sessoes) {
 function buildICChart(sess, sid) {
   const items = sess.slice(0, 12).reverse(); // cronológico
   if (items.length < 2) return '';
-  const maxIC = Math.max(...items.map(x => x.indice || 0), 1);
+  const maxIC = Math.max(...items.map(x => x.indice || x.indice_carga || 0), 1);
 
   const bars = items.map((ss, i) => {
-    const h = Math.max(Math.round((ss.indice || 0) / maxIC * 64), 4);
+    const h = Math.max(Math.round((ss.indice || ss.indice_carga || 0) / maxIC * 64), 4);
     const isLast = i === items.length - 1;
     const col = isLast ? 'var(--gold)' : 'var(--copper)';
-    const lbl = (ss.data || '').slice(0, 5);
+    const lbl = ( ss.date||ss.data||'').slice(0, 5);
     return `<div class="ic-bar-col" onclick="openModal('sessao_${ss.id || i}','${sid}')">
       <div class="ic-bar" style="height:${h}px;background:${col};opacity:${isLast?1:0.6}"></div>
       <div class="ic-bar-lbl">${lbl}</div>
@@ -890,7 +890,7 @@ function buildICChart(sess, sid) {
   }).join('');
 
   // Tendência linear simples
-  const ics = items.map(x => x.indice || 0);
+  const ics = items.map(x => x.indice || x.indice_carga || 0);
   const n = ics.length;
   const meanX = (n - 1) / 2;
   const meanY = ics.reduce((a, b) => a + b, 0) / n;
@@ -973,7 +973,7 @@ function buildPRs(sess, sid) {
         <div class="pr-ico">🏋️</div>
         <div class="pr-info">
           <div class="pr-exname">${pr.nome}</div>
-          <div class="pr-desc">${pr.data || ''} · ${pr.s}×${pr.r} reps</div>
+          <div class="pr-desc">${pr.date||pr.data||''} · ${pr.s}×${pr.r} reps</div>
         </div>
         <div class="pr-right">
           <div class="pr-kg">${pr.kg > 0 ? pr.kg : '—'}</div>
@@ -1048,7 +1048,7 @@ function renderHistorico() {
         <div class="hist-row" id="hist-row-${i}" onclick="toggleHistRow(${i})">
           <div class="hist-hd">
             <div class="hist-tipo">${ss.tipo || ss.treino_id || '—'}</div>
-            <div class="hist-date">${ss.data || ''}</div>
+            <div class="hist-date">${ss.date||ss.data||''}</div>
           </div>
           <div class="hist-bar-bg">
             <div class="hist-bar-fill" style="width:${Math.min((ss.pse||0)/10,1)*100}%"></div>
@@ -1056,7 +1056,7 @@ function renderHistorico() {
           <div class="hist-tags" style="justify-content:space-between">
             <div style="display:flex;gap:5px;flex-wrap:wrap">
               <span class="hist-tag">PSE ${ss.pse?.toFixed(1)||'—'}</span>
-              ${ss.indice ? `<span class="hist-tag">IC ${ss.indice}</span>` : ''}
+              ${ss.indice ? `<span class="hist-tag">IC ${ss.indice||ss.indice_carga}</span>` : ''}
               ${ss.neural  ? `<span class="hist-tag">N ${Math.round(ss.neural)}</span>` : ''}
               ${simChips.map(c => `<span class="hist-tag" style="color:${c.c==='alert'?'var(--danger2)':c.c==='warn'?'var(--copper2)':'var(--moss2)'}">● ${c.short}</span>`).join('')}
             </div>
@@ -1188,9 +1188,9 @@ function openModal(type, studentId, extra) {
       <div style="margin-top:14px">
         ${items.map(ss=>`
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-            <div style="font-size:8px;color:var(--ink3);width:44px;flex-shrink:0">${(ss.data||'').slice(0,5)}</div>
+            <div style="font-size:8px;color:var(--ink3);width:44px;flex-shrink:0">${(ss.date||ss.data||'').slice(0,5)}</div>
             <div style="flex:1;height:3px;background:var(--b);border-radius:2px;overflow:hidden">
-              <div style="height:100%;width:${(ss.indice||0)/max*100}%;background:var(--copper);border-radius:2px"></div>
+              <div style="height:100%;width:${(ss.indice||ss.indice_carga||0)/max*100}%;background:var(--copper);border-radius:2px"></div>
             </div>
             <div style="font-family:'Cormorant Garamond',serif;font-style:italic;font-size:14px;color:var(--gold);width:36px;text-align:right">${ss.indice||'—'}</div>
           </div>`).join('')}
@@ -1221,7 +1221,7 @@ function openModal(type, studentId, extra) {
     sess.forEach(ss => {
       (ss.exercicios||[]).forEach(ex => {
         if ((ex.nome||ex.n||'') === nome)
-          historico.push({data:ss.data, kg:ex.kg||0, r:ex.r||ex.reps||0, s:ex.s||3, pse:ex.pse});
+          historico.push({data:ss.date||ss.data, kg:ex.kg||0, r:ex.r||ex.reps||0, s:ex.s||3, pse:ex.pse});
       });
     });
     historico.sort((a,b)=>(b.kg||0)-(a.kg||0));
@@ -1340,7 +1340,7 @@ function buildNarrativePrompt(s, sessoes) {
   const ultimas = sessoes.filter(x => !x.simulado).slice(0, 5);
   const pses = ultimas.map(x => x.pse).filter(Boolean);
   const pse_media = pses.length ? (pses.reduce((a,b)=>a+b,0)/pses.length).toFixed(1) : null;
-  const ics = ultimas.map(x => x.indice).filter(Boolean);
+  const ics = ultimas.map(x => x.indice || x.indice_carga).filter(Boolean);
   const ic_trend = ics.length >= 2
     ? (ics[0] > ics[1] ? 'subindo' : ics[0] < ics[1] ? 'caindo' : 'estável')
     : null;
@@ -1612,7 +1612,7 @@ function calcChips(sim) {
 
   // pse_ic_divergência: PSE esperada alta com IC simulado abaixo da média histórica -15%
   if (sessoes.length >= 3) {
-    const mediaIC = sessoes.slice(0, 8).reduce((s, ss) => s + (ss.indice || 0), 0) /
+    const mediaIC = sessoes.slice(0, 8).reduce((s, ss) => s + (ss.indice || ss.indice_carga || 0), 0) /
                     Math.min(sessoes.length, 8);
     if (factor.pse_esp >= 7.5 && sim.ic_sim < mediaIC * 0.85) {
       chips.push({c:'alert',
@@ -1637,7 +1637,7 @@ function calcChips(sim) {
     const bloco1 = sessoes.slice(0, 4); // mais recentes
     const bloco2 = sessoes.slice(4, 8); // anteriores
     if (bloco2.length >= 2) {
-      const ritmo = ss => ss.reduce((s, x) => s + (x.indice || 0) / Math.max(x.pse || 7, 1), 0) / ss.length;
+      const ritmo = ss => ss.reduce((s, x) => s + (x.indice || x.indice_carga || 0) / Math.max(x.pse || 7, 1), 0) / ss.length;
       const r1 = ritmo(bloco1);
       const r2 = ritmo(bloco2);
       const delta = (r1 - r2) / r2;
