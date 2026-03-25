@@ -1,0 +1,3383 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Momentum · PT Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400;1,600;1,700&family=IBM+Plex+Mono:ital,wght@0,300;0,400;1,300;1,400&display=swap" rel="stylesheet">
+
+<!-- Firebase compat SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+
+<style>
+/* ── TOKENS (escuro calibrado: base night3, não night) ─── */
+:root,[data-theme="dark"]{
+  /* backgrounds — mais quentes, menos pitchblack */
+  --bg:   #271f13;   /* era #16120d — agora = night3 da index */
+  --bg2:  #2e2618;   /* cards principais */
+  --bg3:  #352d1e;   /* cards internos, inputs */
+  --bg4:  #3c3425;   /* hover states */
+
+  /* texto gold */
+  --ink:  rgba(200,160,96,.90);
+  --ink2: rgba(200,160,96,.58);
+  --ink3: rgba(200,160,96,.32);
+
+  /* borders */
+  --b:  rgba(200,160,96,.10);
+  --b2: rgba(200,160,96,.18);
+  --b3: rgba(200,160,96,.30);
+
+  /* accent */
+  --copper: #8a6030;
+  --copper2:#a07840;
+  --gold:   #c8a060;
+  --gold2:  #ddb870;
+  --gold3:  #e8cc90;
+
+  /* semânticas */
+  --moss:   #4a6832;
+  --moss2:  #5a8040;
+  --moss3:  #6aa050;
+  --slate:  #2e5060;
+  --slate2: #3a6878;
+  --danger: #8a3020;
+  --danger2:#b84030;
+
+  /* surface light — usado em light mode */
+  --page:  #f5f0e6;
+  --page2: #ede6d2;
+  --page3: #e4dbc4;
+
+  --card-bg: var(--bg2);
+  --card-border: var(--b);
+}
+[data-theme="light"]{
+  --bg:   #f5f0e6;
+  --bg2:  #ede6d2;
+  --bg3:  #fff;
+  --bg4:  #e4dbc4;
+  --ink:  rgba(60,40,15,.88);
+  --ink2: rgba(60,40,15,.58);
+  --ink3: rgba(60,40,15,.38);
+  --b:  rgba(100,70,30,.12);
+  --b2: rgba(100,70,30,.20);
+  --b3: rgba(100,70,30,.32);
+  --copper: #7a5020;
+  --gold:   #a07030;
+  --card-bg: #fff;
+  --card-border: var(--b2);
+}
+[data-theme="light"] body::after{display:none;}
+
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;overflow:hidden;}
+body{background:var(--bg);color:var(--ink);font-family:'IBM Plex Mono',monospace;font-size:13px;}
+body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9998;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.88' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='400' height='400' filter='url(%23g)' opacity='.018'/%3E%3C/svg%3E");}
+
+.app{width:100%;max-width:430px;margin:0 auto;height:100vh;display:flex;flex-direction:column;overflow:hidden;position:relative;}
+
+/* ── LOADING ─────────────────────────────────────── */
+.app-loading{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;transition:opacity .4s;}
+.app-loading.out{opacity:0;pointer-events:none;}
+.app-loading-logo{font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:600;font-size:28px;color:var(--gold);margin-bottom:8px;}
+.app-loading-sub{font-size:9px;text-transform:uppercase;letter-spacing:.22em;color:var(--ink3);}
+.app-loading-bar{width:120px;height:1px;background:var(--b);margin-top:24px;overflow:hidden;}
+.app-loading-bar-fill{height:100%;background:var(--copper);animation:loadbar 1.6s ease forwards;}
+@keyframes loadbar{from{width:0}to{width:100%}}
+
+/* ── TOPBAR ──────────────────────────────────────── */
+.topbar{flex-shrink:0;padding:14px 20px 10px;display:flex;align-items:center;justify-content:space-between;
+  background:rgba(39,31,19,.94);backdrop-filter:blur(14px);border-bottom:1px solid var(--b);z-index:10;}
+.tb-logo{font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:600;font-size:16px;color:var(--gold);}
+.tb-right{display:flex;align-items:center;gap:8px;}
+.tb-badge{font-size:8px;text-transform:uppercase;letter-spacing:.14em;padding:3px 9px;
+  border:1px solid var(--b2);color:var(--copper2);border-radius:1px;}
+.theme-btn{background:none;border:1px solid var(--b2);color:var(--ink3);font-size:13px;width:30px;height:30px;
+  cursor:pointer;font-family:'IBM Plex Mono',monospace;transition:all .2s;}
+.theme-btn:hover{border-color:var(--b3);color:var(--ink2);}
+
+/* ── STUDENT SELECTOR ────────────────────────────── */
+.student-bar{flex-shrink:0;padding:10px 16px;border-bottom:1px solid var(--b);
+  background:rgba(46,38,24,.6);backdrop-filter:blur(8px);}
+.student-bar-label{font-size:8px;text-transform:uppercase;letter-spacing:.18em;color:var(--ink3);margin-bottom:8px;}
+.student-pills{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px;}
+.student-pills::-webkit-scrollbar{display:none;}
+.student-pill{flex-shrink:0;padding:7px 14px;border:1px solid var(--b2);background:var(--bg3);
+  color:var(--ink2);font-size:9px;text-transform:uppercase;letter-spacing:.12em;
+  font-family:'IBM Plex Mono',monospace;cursor:pointer;transition:all .18s;border-radius:2px;white-space:nowrap;}
+.student-pill:hover{border-color:var(--b3);color:var(--ink);}
+.student-pill.active{border-color:var(--copper);color:var(--gold2);background:rgba(138,96,48,.10);}
+.student-pill.risk-monitorar{border-left:2px solid var(--danger2);}
+.student-pill-loading{display:flex;align-items:center;gap:8px;font-size:9px;color:var(--ink3);padding:7px 0;}
+
+/* ── SCREENS ─────────────────────────────────────── */
+.screen-wrap{flex:1;overflow:hidden;position:relative;}
+.screen{position:absolute;inset:0;display:flex;flex-direction:column;opacity:0;pointer-events:none;
+  transition:opacity .22s ease,transform .22s ease;transform:translateX(20px);}
+.screen.active{opacity:1;pointer-events:all;transform:translateX(0);}
+.sbody{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+.sbody::-webkit-scrollbar{display:none;}
+
+/* ── SECTION SHARED ──────────────────────────────── */
+.sec{padding:0 20px;margin-bottom:22px;}
+.sec-head{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
+.sec-title{font-size:9px;text-transform:uppercase;letter-spacing:.22em;color:var(--copper2);}
+.sec-line{flex:1;height:1px;background:var(--b);}
+.card{background:var(--card-bg);border:1px solid var(--card-border);border-radius:3px;}
+
+/* ── HERO HOME ───────────────────────────────────── */
+.hero{padding:22px 20px 20px;}
+.hero-date{font-size:9px;color:var(--ink3);text-transform:uppercase;letter-spacing:.14em;margin-bottom:4px;}
+.hero-name{font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:600;
+  font-size:38px;line-height:.9;color:var(--gold);margin-bottom:4px;}
+.hero-meso{font-size:9px;color:var(--ink3);text-transform:uppercase;letter-spacing:.12em;margin-bottom:20px;}
+
+/* momentum card */
+.ms-card{padding:16px;display:flex;align-items:center;gap:14px;}
+.ms-arc{position:relative;width:58px;height:58px;flex-shrink:0;}
+.ms-arc svg{width:58px;height:58px;}
+.ms-arc-val{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:600;font-size:20px;color:var(--gold);}
+.ms-label{font-size:8px;text-transform:uppercase;letter-spacing:.16em;color:var(--ink3);margin-bottom:4px;}
+.ms-title{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:16px;color:var(--gold2);margin-bottom:3px;}
+.ms-desc{font-size:9px;color:var(--ink2);line-height:1.7;}
+.ms-clickable{cursor:pointer;transition:border-color .15s;}
+.ms-clickable:hover{border-color:var(--b3);}
+
+/* scores grid */
+.scores-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;}
+.score-chip{background:var(--bg3);border:1px solid var(--b);border-radius:3px;padding:10px 10px 8px;
+  cursor:pointer;transition:border-color .15s;}
+.score-chip:hover{border-color:var(--b3);}
+.score-chip-lbl{font-size:7px;text-transform:uppercase;letter-spacing:.14em;color:var(--ink3);margin-bottom:6px;}
+.score-chip-bar{height:2px;background:var(--b);border-radius:1px;overflow:hidden;margin-bottom:5px;}
+.score-chip-fill{height:100%;border-radius:1px;}
+.score-chip-val{font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:600;font-size:20px;color:var(--gold);}
+
+/* weekly strip */
+.sem-grid{display:flex;gap:6px;}
+.dia{flex:1;background:var(--bg3);border:1px solid var(--b);border-radius:3px;padding:10px 8px 12px;cursor:pointer;transition:border-color .15s;}
+.dia:hover{border-color:var(--b3);}
+.dia.done{border-color:rgba(90,128,64,.3);}
+.dia.hoje{border-color:var(--copper);background:rgba(138,96,48,.05);}
+.dia.rest{opacity:.45;}
+.dia-dot{width:5px;height:5px;border-radius:50%;margin-bottom:8px;}
+.dia-dot.done{background:var(--moss2);}
+.dia-dot.hoje{background:var(--gold);box-shadow:0 0 8px rgba(200,160,96,.44);}
+.dia-dot.rest{background:var(--b2);}
+.dia-lbl{font-size:8px;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:2px;}
+.dia-tipo{font-size:9px;color:var(--ink2);}
+.dia-tipo.hoje-txt{color:var(--copper2);}
+.dia-check{font-size:9px;color:var(--moss2);margin-top:4px;}
+
+/* msg PT */
+.msg-card{background:var(--bg3);border:1px solid var(--b);border-radius:3px;padding:16px;position:relative;overflow:hidden;}
+.msg-card::before{content:'';position:absolute;top:0;left:0;width:2px;height:100%;background:var(--copper);}
+.msg-author{font-size:8px;color:var(--copper2);text-transform:uppercase;letter-spacing:.14em;margin-bottom:8px;}
+.msg-text{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:13px;color:var(--ink2);line-height:1.9;}
+.msg-date{font-size:8px;color:var(--ink3);margin-top:8px;}
+
+/* start btn */
+.start-btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:15px;
+  background:linear-gradient(135deg,var(--copper),var(--copper2));border:none;cursor:pointer;
+  font-family:'IBM Plex Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:.2em;
+  color:var(--page);margin-top:10px;border-radius:3px;transition:opacity .15s;}
+.start-btn:hover{opacity:.88;}
+
+/* ── EVOLUÇÃO PLACEHOLDERS ───────────────────────── */
+.pr-row{background:var(--bg3);border:1px solid var(--b);border-radius:3px;padding:12px 14px;
+  display:flex;align-items:center;gap:12px;margin-bottom:6px;cursor:pointer;transition:border-color .15s;}
+.pr-row:hover{border-color:var(--b3);}
+.pr-row.pr-new{border-color:rgba(200,160,60,.28);}
+.pr-ico{font-size:16px;width:22px;flex-shrink:0;}
+.pr-info{flex:1;}
+.pr-exname{font-size:10px;color:var(--ink);margin-bottom:2px;}
+.pr-desc{font-size:8px;color:var(--ink3);line-height:1.6;}
+.pr-badge{font-size:7px;padding:2px 6px;border:1px solid rgba(200,160,60,.3);color:var(--gold2);margin-top:3px;display:inline-block;border-radius:1px;}
+.pr-right{text-align:right;flex-shrink:0;}
+.pr-kg{font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:600;font-size:22px;color:var(--gold);line-height:1;}
+.pr-reps{font-size:8px;color:var(--ink3);}
+
+.chart-card{background:var(--bg3);border:1px solid var(--b);border-radius:3px;padding:14px 14px 10px;}
+.chart-lbl{font-size:8px;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;}
+
+/* ── HISTÓRICO PLACEHOLDERS ──────────────────────── */
+.hist-row{background:var(--bg3);border:1px solid var(--b);border-radius:3px;padding:12px 14px;margin-bottom:6px;cursor:pointer;transition:border-color .15s;}
+.hist-row:hover{border-color:var(--b3);}
+.hist-hd{display:flex;justify-content:space-between;margin-bottom:6px;}
+.hist-tipo{font-size:10px;color:var(--ink);}
+.hist-date{font-size:8px;color:var(--ink3);}
+.hist-bar-bg{height:3px;background:var(--b);border-radius:2px;overflow:hidden;margin-bottom:6px;}
+.hist-bar-fill{height:100%;background:linear-gradient(90deg,var(--copper),var(--copper2));border-radius:2px;}
+.hist-tags{display:flex;gap:5px;flex-wrap:wrap;}
+.hist-tag{font-size:7px;padding:2px 7px;border:1px solid var(--b2);color:var(--ink3);text-transform:uppercase;letter-spacing:.07em;border-radius:2px;}
+
+/* ── BOTTOM NAV ──────────────────────────────────── */
+.bnav{flex-shrink:0;display:flex;border-top:1px solid var(--b);
+  background:rgba(39,31,19,.96);padding:10px 0 max(10px,env(safe-area-inset-bottom));}
+.bnav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;
+  font-size:7px;text-transform:uppercase;letter-spacing:.12em;color:var(--ink3);
+  background:none;border:none;font-family:'IBM Plex Mono',monospace;padding:0;transition:color .15s;}
+.bnav-item.active{color:var(--gold);}
+.bnav-icon{font-size:16px;line-height:1;}
+
+/* ── MODAL SHELL ─────────────────────────────────── */
+.modal-overlay{position:fixed;inset:0;background:rgba(39,31,19,.72);z-index:200;
+  opacity:0;pointer-events:none;transition:opacity .22s;backdrop-filter:blur(4px);}
+.modal-overlay.open{opacity:1;pointer-events:all;}
+.modal-sheet{position:absolute;bottom:0;left:50%;transform:translateX(-50%) translateY(100%);
+  width:100%;max-width:430px;background:var(--bg2);border-top:1px solid var(--b2);
+  border-radius:6px 6px 0 0;transition:transform .28s cubic-bezier(.32,.72,0,1);
+  max-height:82vh;display:flex;flex-direction:column;}
+.modal-overlay.open .modal-sheet{transform:translateX(-50%) translateY(0);}
+.modal-handle{width:36px;height:3px;background:var(--b3);border-radius:2px;margin:12px auto 6px;}
+.modal-body{overflow-y:auto;padding:0 20px 40px;flex:1;}
+.modal-title{font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:600;font-size:22px;color:var(--gold);margin-bottom:4px;}
+.modal-sub{font-size:8px;text-transform:uppercase;letter-spacing:.18em;color:var(--copper2);margin-bottom:16px;}
+.modal-prose{font-size:11px;color:var(--ink2);line-height:1.85;}
+
+/* ── PT SIMULATOR BADGE ──────────────────────────── */
+.sim-bar{display:flex;align-items:center;gap:10px;padding:8px 16px;
+  background:rgba(138,96,48,.08);border-bottom:1px solid var(--b);font-size:8px;
+  text-transform:uppercase;letter-spacing:.14em;color:var(--copper2);}
+.sim-dot{width:6px;height:6px;border-radius:50%;background:var(--copper);
+  animation:sblink 2s ease infinite;flex-shrink:0;}
+@keyframes sblink{0%,100%{opacity:1}50%{opacity:.2}}
+.sim-bar button{margin-left:auto;background:none;border:1px solid var(--b2);color:var(--ink3);
+  font-family:'IBM Plex Mono',monospace;font-size:7px;text-transform:uppercase;letter-spacing:.12em;
+  padding:4px 10px;cursor:pointer;transition:all .15s;border-radius:1px;}
+.sim-bar button:hover{border-color:var(--copper);color:var(--copper2);}
+
+/* ── EVOLUÇÃO ────────────────────────────────────── */
+.ic-chart-wrap{position:relative;width:100%;height:80px;margin-bottom:8px;}
+.ic-bar-group{display:flex;align-items:flex-end;gap:3px;height:72px;padding:0 2px;}
+.ic-bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;}
+.ic-bar{width:100%;border-radius:2px 2px 0 0;min-height:4px;transition:opacity .15s;}
+.ic-bar-col:hover .ic-bar{opacity:.75;}
+.ic-bar-lbl{font-size:6px;color:var(--ink3);text-align:center;white-space:nowrap;overflow:hidden;max-width:100%;}
+.ic-legend{display:flex;gap:10px;margin-top:6px;flex-wrap:wrap;}
+.ic-leg-item{display:flex;align-items:center;gap:4px;font-size:7px;color:var(--ink3);}
+.ic-leg-dot{width:6px;height:6px;border-radius:1px;flex-shrink:0;}
+
+.pr-section{display:flex;flex-direction:column;gap:5px;}
+.pr-empty{font-size:9px;color:var(--ink3);padding:12px 0;}
+
+.meso-weeks-grid{display:flex;gap:4px;flex-wrap:wrap;margin-top:10px;}
+.meso-wk{flex:1;min-width:32px;padding:8px 4px;background:var(--bg3);border:1px solid var(--b);
+  border-radius:2px;text-align:center;cursor:pointer;transition:border-color .15s;}
+.meso-wk:hover{border-color:var(--b3);}
+.meso-wk.done-wk{background:rgba(74,104,50,.10);border-color:rgba(90,128,64,.25);}
+.meso-wk.cur-wk{border-color:var(--copper);background:rgba(138,96,48,.07);}
+.meso-wk-n{font-size:7px;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;}
+.meso-wk-st{font-size:8px;margin-top:3px;}
+
+.chips-row{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:14px;}
+.chip{font-size:7px;padding:3px 9px;border-radius:2px;text-transform:uppercase;
+  letter-spacing:.1em;border:1px solid;}
+.chip-ok{color:var(--moss2);border-color:rgba(90,128,64,.35);background:rgba(74,104,50,.08);}
+.chip-warn{color:var(--copper2);border-color:rgba(160,120,64,.35);background:rgba(138,96,48,.08);}
+.chip-alert{color:var(--danger2);border-color:rgba(184,64,48,.3);background:rgba(138,32,16,.07);}
+
+/* ── HISTÓRICO ───────────────────────────────────── */
+.hist-detail{display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--b);}
+.hist-detail.open{display:block;}
+.hist-ex-row{display:flex;justify-content:space-between;font-size:9px;
+  color:var(--ink2);padding:4px 0;border-bottom:1px solid var(--b);}
+.hist-ex-row:last-child{border-bottom:none;}
+.hist-dims{display:flex;gap:6px;margin-top:8px;}
+.hist-dim{flex:1;background:var(--bg2);border:1px solid var(--b);border-radius:2px;
+  padding:6px 8px;text-align:center;}
+.hist-dim-lbl{font-size:6px;text-transform:uppercase;letter-spacing:.12em;color:var(--ink3);margin-bottom:3px;}
+.hist-dim-val{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:14px;color:var(--gold);}
+
+/* ── AI NARRATIVE ────────────────────────────────── */
+.ai-card{background:var(--bg3);border:1px solid var(--b);border-radius:3px;
+  padding:14px 16px;position:relative;overflow:hidden;cursor:pointer;transition:border-color .15s;}
+.ai-card:hover{border-color:var(--b3);}
+.ai-card::before{content:'';position:absolute;top:0;left:0;width:2px;height:100%;
+  background:linear-gradient(180deg,var(--copper),var(--gold));}
+.ai-card-label{font-size:7px;text-transform:uppercase;letter-spacing:.2em;
+  color:var(--copper2);margin-bottom:8px;display:flex;align-items:center;gap:6px;}
+.ai-dot{width:4px;height:4px;border-radius:50%;background:var(--copper2);
+  animation:sblink 2.4s ease infinite;}
+.ai-text{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:13px;
+  color:var(--ink2);line-height:1.85;}
+.ai-text.loading{color:var(--ink3);}
+
+/* skeleton shimmer */
+.ai-skeleton{display:flex;flex-direction:column;gap:6px;}
+.ai-skel-line{height:11px;background:linear-gradient(90deg,var(--b) 25%,var(--b2) 50%,var(--b) 75%);
+  background-size:200% 100%;border-radius:2px;animation:shimmer 1.6s ease infinite;}
+.ai-skel-line:nth-child(2){width:88%;}
+.ai-skel-line:nth-child(3){width:72%;}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+/* ── SIMULATOR ───────────────────────────────────── */
+.sim-overlay{position:fixed;inset:0;background:rgba(23,18,10,.78);z-index:300;
+  opacity:0;pointer-events:none;transition:opacity .24s;backdrop-filter:blur(6px);}
+.sim-overlay.open{opacity:1;pointer-events:all;}
+.sim-sheet{position:absolute;bottom:0;left:50%;transform:translateX(-50%) translateY(100%);
+  width:100%;max-width:430px;background:var(--bg2);border-top:1px solid var(--b2);
+  border-radius:8px 8px 0 0;transition:transform .3s cubic-bezier(.32,.72,0,1);
+  max-height:92vh;display:flex;flex-direction:column;}
+.sim-overlay.open .sim-sheet{transform:translateX(-50%) translateY(0);}
+.sim-handle{width:36px;height:3px;background:var(--b3);border-radius:2px;margin:12px auto 0;}
+.sim-head{padding:14px 20px 10px;border-bottom:1px solid var(--b);}
+.sim-head-title{font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:600;font-size:20px;color:var(--gold);margin-bottom:2px;}
+.sim-head-sub{font-size:8px;text-transform:uppercase;letter-spacing:.18em;color:var(--copper2);}
+.sim-body{flex:1;overflow-y:auto;padding:16px 20px 40px;}
+
+/* slider */
+.sim-slider-wrap{margin-bottom:20px;}
+.sim-slider-labels{display:flex;justify-content:space-between;margin-bottom:6px;}
+.sim-slider-lbl{font-size:8px;text-transform:uppercase;letter-spacing:.12em;color:var(--ink3);}
+.sim-slider-val{font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:600;font-size:28px;color:var(--gold);line-height:1;}
+.sim-slider-desc{font-size:9px;color:var(--ink2);margin-top:4px;height:16px;}
+input[type=range].pse-range{
+  -webkit-appearance:none;width:100%;height:4px;
+  background:linear-gradient(90deg,var(--copper) 0%,var(--gold) 100%);
+  border-radius:2px;outline:none;margin:10px 0 4px;cursor:pointer;}
+input[type=range].pse-range::-webkit-slider-thumb{
+  -webkit-appearance:none;width:20px;height:20px;border-radius:50%;
+  background:var(--gold);border:2px solid var(--bg2);box-shadow:0 0 8px rgba(200,160,96,.4);cursor:pointer;}
+input[type=range].pse-range::-moz-range-thumb{
+  width:18px;height:18px;border-radius:50%;background:var(--gold);border:2px solid var(--bg2);cursor:pointer;}
+
+/* resultado cards */
+.sim-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;}
+.sim-card{background:var(--bg3);border:1px solid var(--b);border-radius:3px;padding:12px 12px 10px;}
+.sim-card-lbl{font-size:7px;text-transform:uppercase;letter-spacing:.16em;color:var(--ink3);margin-bottom:6px;}
+.sim-card-val{font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:600;font-size:22px;line-height:1;}
+.sim-card-unit{font-size:8px;color:var(--ink3);margin-top:3px;text-transform:uppercase;letter-spacing:.1em;}
+.sim-card-delta{font-size:8px;margin-top:4px;}
+.sim-card-delta.neg{color:var(--danger2);}
+.sim-card-delta.pos{color:var(--moss2);}
+.sim-card-delta.neu{color:var(--ink3);}
+
+/* dimensões bar */
+.sim-dims{background:var(--bg3);border:1px solid var(--b);border-radius:3px;padding:12px 14px;margin-bottom:12px;}
+.sim-dims-title{font-size:8px;text-transform:uppercase;letter-spacing:.18em;color:var(--copper2);margin-bottom:10px;}
+.sim-dim-row{display:flex;align-items:center;gap:10px;margin-bottom:7px;}
+.sim-dim-lbl{font-size:8px;color:var(--ink3);width:56px;flex-shrink:0;}
+.sim-dim-track{flex:1;height:3px;background:var(--b);border-radius:2px;overflow:hidden;}
+.sim-dim-fill{height:100%;border-radius:2px;transition:width .4s ease;}
+.sim-dim-num{font-size:9px;color:var(--ink2);width:36px;text-align:right;flex-shrink:0;}
+
+/* chips */
+.sim-chips{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:16px;}
+.sim-chip{font-size:7px;padding:3px 9px;border-radius:2px;text-transform:uppercase;letter-spacing:.1em;border:1px solid;}
+.sim-chip-ok{color:var(--moss2);border-color:rgba(90,128,64,.35);background:rgba(74,104,50,.08);}
+.sim-chip-warn{color:var(--copper2);border-color:rgba(160,120,64,.35);background:rgba(138,96,48,.08);}
+.sim-chip-alert{color:var(--danger2);border-color:rgba(184,64,48,.3);background:rgba(138,32,16,.07);}
+
+/* exercícios simulados */
+.sim-ex-list{display:flex;flex-direction:column;gap:5px;margin-bottom:12px;}
+.sim-ex{background:var(--bg3);border:1px solid var(--b);border-radius:3px;padding:10px 12px;display:flex;align-items:center;gap:10px;}
+.sim-ex-name{flex:1;font-size:10px;color:var(--ink);}
+.sim-ex-detail{font-size:9px;color:var(--ink2);white-space:nowrap;}
+.sim-ex-pse{font-size:8px;padding:2px 6px;border-radius:2px;white-space:nowrap;}
+.sim-save-btn{width:100%;padding:15px;background:linear-gradient(135deg,var(--copper),var(--copper2));
+  border:none;color:var(--page);font-family:'IBM Plex Mono',monospace;font-size:9px;
+  text-transform:uppercase;letter-spacing:.2em;cursor:pointer;border-radius:3px;
+  margin-top:4px;transition:opacity .15s;}
+.sim-save-btn:hover{opacity:.88;}
+.sim-save-btn:disabled{opacity:.35;cursor:not-allowed;}
+
+/* ── UTIL ────────────────────────────────────────── */
+.empty-state{padding:40px 20px;text-align:center;color:var(--ink3);font-size:10px;line-height:2;}
+.live-dot{width:6px;height:6px;border-radius:50%;background:var(--moss3);display:inline-block;
+  margin-right:5px;animation:sblink 2s ease infinite;vertical-align:middle;}
+/* ── PRESCRIÇÃO ──────────────────────────────────── */
+
+/* Painéis deslizantes horizontais */
+.presc-wrap{flex:1;overflow:hidden;display:flex;flex-direction:column;}
+.presc-panels{flex:1;display:flex;overflow:hidden;position:relative;}
+.presc-panel{flex-shrink:0;width:100%;overflow-y:auto;overflow-x:hidden;
+  scrollbar-width:none;transition:transform .3s cubic-bezier(.32,.72,0,1);}
+.presc-panel::-webkit-scrollbar{display:none;}
+.presc-panel-build{transform:translateX(0);}
+.presc-panel-analysis{transform:translateX(100%);background:var(--bg);}
+.presc-panels.show-analysis .presc-panel-build{transform:translateX(-30%);}
+.presc-panels.show-analysis .presc-panel-analysis{transform:translateX(-100%);}
+
+/* Em telas largas: duas colunas */
+@media(min-width:700px){
+  .presc-panels{display:grid;grid-template-columns:1fr 1fr;}
+  .presc-panel{width:auto!important;transform:none!important;}
+  .presc-panels.show-analysis .presc-panel-build{transform:none;}
+  .presc-panels.show-analysis .presc-panel-analysis{transform:none;}
+  .presc-panel-analysis{background:var(--bg2);border-left:1px solid var(--b);}
+  .presc-toggle-analysis{display:none!important;}
+}
+
+/* Topbar da prescrição */
+.presc-topbar{flex-shrink:0;display:flex;align-items:center;gap:8px;
+  padding:10px 16px;border-bottom:1px solid var(--b);background:var(--bg2);}
+.presc-mode-btn{flex:1;padding:8px;border:1px solid var(--b2);background:var(--bg3);
+  color:var(--ink2);font-family:'IBM Plex Mono',monospace;font-size:8px;
+  text-transform:uppercase;letter-spacing:.12em;cursor:pointer;border-radius:2px;
+  transition:all .15s;}
+.presc-mode-btn:hover{border-color:var(--b3);color:var(--ink);}
+.presc-mode-btn.active{border-color:var(--copper);color:var(--gold2);
+  background:rgba(138,96,48,.10);}
+.presc-toggle-analysis{padding:8px 12px;border:1px solid var(--b2);background:var(--bg3);
+  color:var(--ink3);font-family:'IBM Plex Mono',monospace;font-size:10px;
+  cursor:pointer;border-radius:2px;transition:all .15s;flex-shrink:0;}
+.presc-toggle-analysis.active{border-color:var(--copper);color:var(--copper2);}
+
+/* Banco de exercícios */
+.ex-bank{display:flex;flex-direction:column;border-bottom:1px solid var(--b);
+  flex-shrink:0;max-height:240px;}
+.ex-bank-search{display:flex;gap:6px;padding:10px 16px 8px;}
+.ex-search-input{flex:1;padding:7px 10px;font-family:'IBM Plex Mono',monospace;
+  font-size:9px;border:1px solid var(--b2);background:var(--bg3);color:var(--ink);
+  outline:none;border-radius:2px;}
+.ex-search-input:focus{border-color:var(--copper);}
+.ex-search-input::placeholder{color:var(--ink3);}
+.ex-cats{display:flex;gap:4px;padding:0 16px 8px;overflow-x:auto;scrollbar-width:none;flex-shrink:0;}
+.ex-cats::-webkit-scrollbar{display:none;}
+.ex-cat{flex-shrink:0;font-size:7px;text-transform:uppercase;letter-spacing:.1em;
+  padding:3px 8px;border:1px solid var(--b);background:transparent;color:var(--ink3);
+  cursor:pointer;font-family:'IBM Plex Mono',monospace;border-radius:2px;transition:all .12s;}
+.ex-cat:hover{border-color:var(--b2);color:var(--ink2);}
+.ex-cat.active{background:rgba(138,96,48,.08);border-color:var(--copper);color:var(--copper2);}
+.ex-list{overflow-y:auto;flex:1;scrollbar-width:none;}
+.ex-list::-webkit-scrollbar{display:none;}
+.ex-item{display:flex;align-items:center;gap:10px;padding:9px 16px;
+  border-bottom:1px solid var(--b);cursor:pointer;transition:background .12s;}
+.ex-item:hover{background:var(--bg3);}
+.ex-item.added{opacity:.35;pointer-events:none;}
+.ex-item-ico{font-size:16px;flex-shrink:0;}
+.ex-item-info{flex:1;min-width:0;}
+.ex-item-name{font-size:10px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ex-item-meta{font-size:7px;color:var(--ink3);text-transform:uppercase;letter-spacing:.07em;margin-top:1px;}
+.ex-item-add{font-size:18px;color:var(--copper);opacity:0;transition:opacity .12s;flex-shrink:0;}
+.ex-item:hover .ex-item-add{opacity:1;}
+
+/* Build area */
+.build-area{padding:12px 16px;display:flex;flex-direction:column;gap:8px;
+  min-height:200px;}
+.build-empty{text-align:center;padding:32px 16px;color:var(--ink3);
+  font-size:9px;line-height:2;border:1px dashed var(--b2);border-radius:3px;}
+.build-empty-icon{font-size:28px;display:block;margin-bottom:8px;opacity:.4;}
+
+/* Card de exercício no build */
+.pex-card{border:1px solid var(--b2);border-radius:3px;background:var(--bg2);
+  overflow:hidden;transition:border-color .15s;}
+.pex-card:hover{border-color:var(--b3);}
+.pex-card.drag-over{border-color:var(--copper);border-style:dashed;}
+.pex-card.dragging{opacity:.4;}
+.pex-head{padding:10px 12px;background:var(--bg3);border-bottom:1px solid var(--b);
+  display:flex;align-items:center;gap:8px;}
+.pex-drag{cursor:grab;color:var(--ink3);font-size:12px;padding:0 2px;
+  user-select:none;line-height:1;flex-shrink:0;}
+.pex-drag:active{cursor:grabbing;}
+.pex-ico{font-size:14px;flex-shrink:0;}
+.pex-name{font-size:10px;color:var(--ink);flex:1;}
+.pex-cat{font-size:7px;color:var(--ink3);text-transform:uppercase;letter-spacing:.07em;}
+.pex-rm{background:none;border:none;color:var(--ink3);font-size:16px;
+  cursor:pointer;line-height:1;transition:color .12s;flex-shrink:0;padding:0 2px;}
+.pex-rm:hover{color:var(--danger2);}
+.pex-adv-toggle{background:none;border:1px solid var(--b);color:var(--ink3);
+  font-family:'IBM Plex Mono',monospace;font-size:7px;text-transform:uppercase;
+  letter-spacing:.1em;padding:3px 8px;cursor:pointer;border-radius:1px;
+  transition:all .12s;flex-shrink:0;}
+.pex-adv-toggle:hover{border-color:var(--b2);color:var(--ink2);}
+.pex-adv-toggle.active{border-color:var(--copper);color:var(--copper2);}
+
+/* Modo rápido — preset pills de objetivo */
+.pex-quick{padding:10px 12px;}
+.pex-quick-lbl{font-size:7px;text-transform:uppercase;letter-spacing:.14em;
+  color:var(--ink3);margin-bottom:7px;}
+.pex-obj-pills{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px;}
+.pex-obj{font-size:8px;padding:5px 10px;border:1px solid var(--b2);background:transparent;
+  color:var(--ink2);cursor:pointer;font-family:'IBM Plex Mono',monospace;
+  border-radius:2px;transition:all .12s;}
+.pex-obj:hover{border-color:var(--b3);}
+.pex-obj.active{border-color:transparent;color:#fff;}
+.pex-preset-spec{display:flex;gap:8px;flex-wrap:wrap;font-size:8px;color:var(--ink2);}
+.pex-preset-spec span{padding:3px 8px;background:var(--bg3);border:1px solid var(--b);
+  border-radius:2px;}
+.pex-preset-spec strong{color:var(--gold);}
+
+/* Modo avançado — controles completos */
+.pex-advanced{padding:10px 12px;border-top:1px solid var(--b);
+  background:rgba(138,96,48,.03);display:none;}
+.pex-advanced.open{display:block;}
+.pex-ctrl-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:10px;}
+.pex-ctrl{display:flex;flex-direction:column;gap:3px;}
+.pex-ctrl-lbl{font-size:6px;text-transform:uppercase;letter-spacing:.12em;color:var(--ink3);}
+.pex-ctrl-input{width:100%;padding:5px 7px;font-family:'IBM Plex Mono',monospace;
+  font-size:10px;border:1px solid var(--b2);background:var(--bg3);color:var(--ink);
+  outline:none;text-align:center;border-radius:2px;}
+.pex-ctrl-input:focus{border-color:var(--copper);}
+.pex-zone-row{display:flex;gap:3px;margin-bottom:8px;}
+.pex-zone{flex:1;padding:5px 4px;text-align:center;font-size:7px;
+  text-transform:uppercase;letter-spacing:.08em;border:1px solid var(--b2);
+  cursor:pointer;font-family:'IBM Plex Mono',monospace;transition:all .1s;
+  color:var(--ink3);border-radius:2px;}
+.pex-zone:hover{border-color:var(--copper);}
+.pex-zone.active{color:#fff;border-color:transparent;}
+.pex-prog-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+.pex-prog-lbl{font-size:7px;color:var(--ink3);width:80px;flex-shrink:0;text-transform:uppercase;letter-spacing:.08em;}
+.pex-prog-select{flex:1;padding:5px 7px;font-family:'IBM Plex Mono',monospace;
+  font-size:8px;border:1px solid var(--b2);background:var(--bg3);color:var(--ink);
+  outline:none;border-radius:2px;}
+.pex-prog-select:focus{border-color:var(--copper);}
+.pex-validation{padding:6px 10px;font-size:8px;line-height:1.7;border-radius:2px;
+  border-left:2px solid;margin-top:6px;}
+.pex-validation.warn{color:var(--copper2);border-color:var(--copper);
+  background:rgba(138,96,48,.06);}
+.pex-validation.locked{color:var(--danger2);border-color:var(--danger2);
+  background:rgba(138,32,16,.06);}
+
+/* Painel de análise */
+.an-panel{padding:14px 16px;display:flex;flex-direction:column;gap:14px;}
+.an-section{background:var(--bg2);border:1px solid var(--b);border-radius:3px;padding:12px 14px;}
+.an-section-lbl{font-size:7px;text-transform:uppercase;letter-spacing:.2em;
+  color:var(--copper2);margin-bottom:10px;}
+.an-empty{font-size:9px;color:var(--ink3);text-align:center;padding:16px 0;}
+
+/* Resumo dos exercícios no painel de análise */
+.an-ex-mini{display:flex;justify-content:space-between;align-items:center;
+  padding:4px 0;border-bottom:1px solid var(--b);font-size:8px;}
+.an-ex-mini:last-child{border-bottom:none;}
+.an-ex-mini-name{color:var(--ink2);flex:1;}
+.an-ex-mini-ic{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:14px;
+  color:var(--gold);flex-shrink:0;}
+
+/* Barras N/M/Met */
+.an-dim-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+.an-dim-lbl{font-size:8px;width:64px;flex-shrink:0;text-transform:uppercase;letter-spacing:.08em;}
+.an-dim-track{flex:1;height:4px;background:var(--b);border-radius:2px;overflow:hidden;}
+.an-dim-fill{height:100%;border-radius:2px;transition:width .4s ease;}
+.an-dim-val{font-size:9px;width:32px;text-align:right;flex-shrink:0;}
+
+/* IC total display */
+.an-ic-display{text-align:center;padding:8px 0;}
+.an-ic-val{font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:600;
+  font-size:38px;color:var(--gold);line-height:1;}
+.an-ic-lbl{font-size:7px;text-transform:uppercase;letter-spacing:.18em;color:var(--ink3);margin-top:4px;}
+.an-ic-context{height:3px;background:var(--b);border-radius:2px;overflow:hidden;
+  margin:8px 0 4px;}
+.an-ic-context-fill{height:100%;border-radius:2px;transition:width .4s ease;}
+.an-ic-zones{display:flex;justify-content:space-between;font-size:6px;
+  color:var(--ink3);text-transform:uppercase;letter-spacing:.08em;}
+
+/* Salvar */
+/* Gráfico de projeção longitudinal */
+.proj-chart-wrap{position:relative;width:100%;margin-bottom:6px;}
+.proj-chart-wrap svg{display:block;width:100%;overflow:visible;}
+.proj-legend{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;}
+.proj-leg-item{display:flex;align-items:center;gap:4px;font-size:7px;color:var(--ink3);}
+.proj-leg-dot{width:8px;height:2px;border-radius:1px;flex-shrink:0;}
+.proj-verdict{margin-top:8px;padding:7px 10px;border-left:2px solid var(--copper);
+  background:rgba(200,160,96,.04);font-size:8px;color:var(--ink2);line-height:1.7;}
+.proj-verdict strong{color:var(--gold);}
+
+.presc-save-bar{flex-shrink:0;padding:10px 16px;border-top:1px solid var(--b);
+  background:var(--bg2);display:flex;gap:8px;}
+.presc-save-btn{flex:1;padding:13px;background:linear-gradient(135deg,var(--copper),var(--copper2));
+  border:none;color:var(--page);font-family:'IBM Plex Mono',monospace;font-size:9px;
+  text-transform:uppercase;letter-spacing:.18em;cursor:pointer;border-radius:2px;
+  transition:opacity .15s;}
+.presc-save-btn:hover{opacity:.88;}
+.presc-save-btn:disabled{opacity:.35;cursor:not-allowed;}
+.presc-export-btn{padding:13px 16px;background:transparent;border:1px solid var(--b2);
+  color:var(--ink2);font-family:'IBM Plex Mono',monospace;font-size:9px;
+  text-transform:uppercase;letter-spacing:.14em;cursor:pointer;border-radius:2px;
+  transition:all .15s;}
+.presc-export-btn:hover{border-color:var(--copper);color:var(--copper2);}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div class="app-loading" id="app-loading">
+  <div class="app-loading-logo">Momentum</div>
+  <div class="app-loading-sub">PT Dashboard</div>
+  <div class="app-loading-bar"><div class="app-loading-bar-fill"></div></div>
+</div>
+
+<div class="app">
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="tb-logo">Momentum</div>
+    <div class="tb-right">
+      <div class="tb-badge"><span class="live-dot"></span>ao vivo</div>
+      <button class="theme-btn" style="font-size:9px;width:auto;padding:0 10px;text-transform:uppercase;letter-spacing:.1em;"
+        onclick="openSim()">⚡ Sim</button>
+      <button class="theme-btn" onclick="toggleTheme()">◐</button>
+    </div>
+  </div>
+
+  <!-- STUDENT SELECTOR -->
+  <div class="student-bar">
+    <div class="student-bar-label">Selecionar aluno</div>
+    <div class="student-pills" id="student-pills">
+      <div class="student-pill-loading">
+        <span class="live-dot"></span> carregando alunos…
+      </div>
+    </div>
+  </div>
+
+  <!-- SCREENS -->
+  <div class="screen-wrap">
+
+    <!-- ── HOME ─────────────────────────────────── -->
+    <div class="screen active" id="s-home">
+      <div class="sbody" id="sbody-home">
+        <div id="home-content">
+          <div class="empty-state">← selecione um aluno para começar</div>
+        </div>
+        <div style="height:24px"></div>
+      </div>
+    </div>
+
+    <!-- ── EVOLUÇÃO ──────────────────────────────── -->
+    <div class="screen" id="s-evolucao">
+      <div class="sbody">
+        <div style="height:20px"></div>
+        <div id="evolucao-content">
+          <div class="empty-state">← selecione um aluno</div>
+        </div>
+        <div style="height:24px"></div>
+      </div>
+    </div>
+
+    <!-- ── HISTÓRICO ─────────────────────────────── -->
+    <div class="screen" id="s-historico">
+      <div class="sbody">
+        <div style="height:20px"></div>
+        <div id="historico-content">
+          <div class="empty-state">← selecione um aluno</div>
+        </div>
+        <div style="height:24px"></div>
+      </div>
+    </div>
+
+    <!-- ── PRESCRIÇÃO ─────────────────────────────── -->
+    <div class="screen" id="s-prescricao">
+      <div class="presc-wrap">
+
+        <!-- Seletor de modo: Treino Rápido | Mesociclo -->
+        <div class="presc-topbar">
+          <button class="presc-mode-btn active" id="presc-mode-rapido"
+            onclick="setModeRapido()">⚡ Treino Rápido</button>
+          <button class="presc-mode-btn" id="presc-mode-meso"
+            onclick="setModeMeso()">📋 Mesociclo</button>
+          <button class="presc-toggle-analysis" id="presc-toggle-an"
+            onclick="toggleAnalysis()" title="Ver análise">◧</button>
+        </div>
+
+        <!-- Painéis deslizantes -->
+        <div class="presc-panels" id="presc-panels">
+
+          <!-- PAINEL 1: Banco + Build -->
+          <div class="presc-panel presc-panel-build">
+
+            <!-- Banco de exercícios -->
+            <div class="ex-bank" id="ex-bank">
+              <div class="ex-bank-search">
+                <input class="ex-search-input" type="text" id="ex-search"
+                  placeholder="Buscar exercício…"
+                  oninput="filterExercises(this.value)">
+              </div>
+              <div class="ex-cats" id="ex-cats"></div>
+              <div class="ex-list" id="ex-list"></div>
+            </div>
+
+            <!-- Build area -->
+            <div class="build-area" id="build-area">
+              <div class="build-empty" id="build-empty">
+                <span class="build-empty-icon">📋</span>
+                Toque em um exercício para adicionar ao treino
+              </div>
+            </div>
+
+          </div>
+
+          <!-- PAINEL 2: Análise -->
+          <div class="presc-panel presc-panel-analysis">
+            <div class="an-panel" id="an-panel">
+              <div class="an-empty">Adicione exercícios para ver a análise</div>
+            </div>
+          </div>
+
+        </div><!-- /presc-panels -->
+
+        <!-- Barra de salvar -->
+        <div class="presc-save-bar" id="presc-save-bar">
+          <div style="display:flex;flex-direction:column;gap:6px;width:100%">
+            <input id="presc-session-label"
+              style="width:100%;padding:7px 10px;font-family:'IBM Plex Mono',monospace;
+              font-size:9px;border:1px solid var(--b2);background:var(--bg3);color:var(--ink);
+              outline:none;border-radius:2px;"
+              placeholder="Nome da sessão (ex: Treino A · Upper)"
+              onfocus="this.style.borderColor='var(--copper)'"
+              onblur="this.style.borderColor='var(--b2)'">
+            <div style="display:flex;gap:8px">
+              <button class="presc-save-btn" id="presc-save-btn"
+                disabled onclick="saveWorkout()">
+                Salvar sessão prescrita
+              </button>
+              <button class="presc-export-btn" id="presc-export-btn"
+                onclick="exportWorkoutHTML()">↗ HTML</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div><!-- /screen-wrap -->
+
+  <!-- BOTTOM NAV -->
+  <div class="bnav">
+    <button class="bnav-item active" onclick="goPage('home')">
+      <span class="bnav-icon">🏠</span>Hoje
+    </button>
+    <button class="bnav-item" onclick="goPage('evolucao')">
+      <span class="bnav-icon">📈</span>Evolução
+    </button>
+    <button class="bnav-item" onclick="goPage('prescricao')">
+      <span class="bnav-icon">✏️</span>Prescrever
+    </button>
+    <button class="bnav-item" onclick="goPage('historico')">
+      <span class="bnav-icon">📋</span>Histórico
+    </button>
+  </div>
+
+</div><!-- /app -->
+
+<!-- SIMULATOR -->
+<div class="sim-overlay" id="sim-overlay" onclick="closeSim(event)">
+  <div class="sim-sheet">
+    <div class="sim-handle"></div>
+    <div class="sim-head">
+      <div class="sim-head-title">Simulador de Treino</div>
+      <div class="sim-head-sub" id="sim-student-label">selecione um aluno primeiro</div>
+    </div>
+    <div class="sim-body">
+
+      <!-- SLIDER PSE -->
+      <div class="sim-slider-wrap">
+        <div class="sim-slider-labels">
+          <span class="sim-slider-lbl">Desempenho / PSE do aluno</span>
+          <span class="sim-slider-lbl">hoje</span>
+        </div>
+        <div style="display:flex;align-items:baseline;gap:8px">
+          <div class="sim-slider-val" id="sim-pse-num">8</div>
+          <div style="font-size:9px;color:var(--ink3)">/10</div>
+        </div>
+        <input type="range" class="pse-range" id="sim-pse-range"
+          min="1" max="10" step="1" value="8"
+          oninput="updateSim(+this.value)">
+        <div class="sim-slider-desc" id="sim-pse-label">—</div>
+      </div>
+
+      <!-- MÉTRICAS -->
+      <div class="sim-grid" id="sim-metrics"></div>
+
+      <!-- DIMENSÕES -->
+      <div class="sim-dims" id="sim-dims-block">
+        <div class="sim-dims-title">Carga por dimensão</div>
+        <div id="sim-dims-rows"></div>
+      </div>
+
+      <!-- CHIPS -->
+      <div id="sim-chips-wrap" style="margin-bottom:12px"></div>
+
+      <!-- EXERCÍCIOS -->
+      <div style="font-size:8px;text-transform:uppercase;letter-spacing:.18em;color:var(--copper2);margin-bottom:8px">Sessão simulada</div>
+      <div class="sim-ex-list" id="sim-ex-list"></div>
+
+      <!-- SAVE -->
+      <button class="sim-save-btn" id="sim-save-btn"
+        onclick="saveSimSession()">
+        ↓ Salvar como sessão simulada no banco
+      </button>
+    </div>
+  </div>
+</div>
+<div class="modal-overlay" id="modal" onclick="closeModal(event)">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-body" id="modal-body"></div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════
+// FIREBASE CONFIG — preencha com suas credenciais
+// ═══════════════════════════════════════════════════
+// Firebase inicializado via firebase-config.js
+const db = firebase.firestore();
+
+// ═══════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════
+let STATE = {
+  students: [],
+  activeId: null,
+  page: 'home',
+  sessions: {},
+  checkins: {},   // { [studentId]: checkin de hoje }
+};
+
+// ═══════════════════════════════════════════════════
+// FIRESTORE — STUDENTS (onSnapshot = real-time)
+// ═══════════════════════════════════════════════════
+db.collection('students').onSnapshot(snap => {
+  STATE.students = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  renderStudentPills();
+  // Se já havia aluno selecionado, re-renderiza home
+  if (STATE.activeId) renderHome();
+}, err => {
+  console.error('Firebase error:', err);
+  document.getElementById('student-pills').innerHTML =
+    `<div class="student-pill-loading" style="color:var(--danger2)">⚠ erro ao conectar — verifique FB_CONFIG</div>`;
+});
+
+// ═══════════════════════════════════════════════════
+// STUDENT SELECTOR
+// ═══════════════════════════════════════════════════
+function renderStudentPills() {
+  const el = document.getElementById('student-pills');
+  if (!STATE.students.length) {
+    el.innerHTML = '<div class="student-pill-loading">nenhum aluno encontrado</div>';
+    return;
+  }
+  el.innerHTML = STATE.students.map(s => {
+    const isActive = s.id === STATE.activeId;
+    const riskClass = s.risk === 'monitorar' ? ' risk-monitorar' : '';
+    return `<button class="student-pill${isActive ? ' active' : ''}${riskClass}"
+      onclick="selectStudent('${s.id}')">${s.name || s.id}</button>`;
+  }).join('');
+}
+
+function selectStudent(id) {
+  STATE.activeId = id;
+  renderStudentPills();
+  renderHome();
+  renderEvolucao();
+  renderHistorico();
+  // Carrega sessões deste aluno se ainda não carregadas
+  if (!STATE.sessions[id]) loadSessions(id);
+}
+
+// ═══════════════════════════════════════════════════
+// FIRESTORE — SESSIONS (por aluno, sob demanda)
+// ═══════════════════════════════════════════════════
+function loadSessions(studentId) {
+  db.collection('sessions')
+    .where('student_id', '==', studentId)
+    .limit(30)
+    .onSnapshot(snap => {
+      STATE.sessions[studentId] = snap.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .filter(x => !x.simulado)
+        .sort((a, b) => {
+          const ta = a.timestamp?.seconds || 0;
+          const tb = b.timestamp?.seconds || 0;
+          if (ta !== tb) return tb - ta;
+          const da = a.date || a.data || '';
+          const db_ = b.date || b.data || '';
+          return db_.localeCompare(da);
+        });
+      if (STATE.activeId === studentId) {
+        renderHistorico();
+        renderEvolucao();
+      }
+    });
+
+  // Carrega check-in de hoje deste aluno
+  const hoje = new Date().toLocaleDateString('pt-BR');
+  db.collection('checkins')
+    .where('student_id', '==', studentId)
+    .where('data', '==', hoje)
+    .limit(1)
+    .onSnapshot(snap => {
+      STATE.checkins[studentId] = snap.empty ? null : { id: snap.docs[0].id, ...snap.docs[0].data() };
+      if (STATE.activeId === studentId) renderHome();
+    });
+}
+
+// ═══════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════
+function getActiveStudent() {
+  return STATE.students.find(s => s.id === STATE.activeId) || null;
+}
+
+const DAYS   = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+const MONTHS = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+function fmtDate() {
+  const n = new Date();
+  return `${DAYS[n.getDay()]}, ${n.getDate()} de ${MONTHS[n.getMonth()]}`;
+}
+
+function ritmoLabel(estado) {
+  const map = { alta:'Ritmo em alta', estavel:'Ritmo estável', sobrecarga:'Atenção — sobrecarga', baixo:'Ritmo baixo' };
+  return map[estado] || estado;
+}
+function ritmoDesc(s) {
+  const map = {
+    alta: 'Consistência boa. Carga crescendo de forma saudável.',
+    estavel: 'Progresso regular. Manter volume e monitorar recuperação.',
+    sobrecarga: 'PSE acima do prescrito nas últimas sessões. Considerar deload.',
+    baixo: 'Frequência abaixo do ideal. Verificar aderência.',
+  };
+  return map[s.ritmo_estado] || '—';
+}
+function scoreColor(v) {
+  if (v >= 8) return 'var(--moss2)';
+  if (v >= 6) return 'var(--gold)';
+  if (v >= 4) return 'var(--copper2)';
+  return 'var(--danger2)';
+}
+
+// ═══════════════════════════════════════════════════
+// RENDER — HOME
+// ═══════════════════════════════════════════════════
+function renderHome() {
+  const s = getActiveStudent();
+  const el = document.getElementById('home-content');
+  if (!s) { el.innerHTML = '<div class="empty-state">← selecione um aluno</div>'; return; }
+
+  const scores = s.scores || {};
+  const momentum = scores.momentum || 0;
+  const arcPct = Math.min(momentum / 5, 1);
+  const circ = 2 * Math.PI * 24;
+  const dash = circ * arcPct;
+
+  el.innerHTML = `
+    <div class="hero">
+      <div class="hero-date">${fmtDate()}</div>
+      <div class="hero-name">${(s.name || '').split(' ')[0]}.</div>
+      <div class="hero-meso">${s.mesociclo || '—'} · ${s.divisao || ''}</div>
+
+      <div class="card ms-card ms-clickable" onclick="openModal('momentum','${s.id}')">
+        <div class="ms-arc">
+          <svg viewBox="0 0 60 60">
+            <circle cx="30" cy="30" r="24" fill="none" stroke="rgba(200,160,96,.08)" stroke-width="4.5"/>
+            <circle cx="30" cy="30" r="24" fill="none" stroke="url(#ag${s.id})" stroke-width="4.5"
+              stroke-dasharray="${circ}" stroke-dashoffset="${circ - dash}"
+              stroke-linecap="round" transform="rotate(-90 30 30)"/>
+            <defs><linearGradient id="ag${s.id}" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="#8a6030"/>
+              <stop offset="100%" stop-color="#ddb870"/>
+            </linearGradient></defs>
+          </svg>
+          <div class="ms-arc-val">${momentum.toFixed(1)}</div>
+        </div>
+        <div>
+          <div class="ms-label">Seu Momentum <span style="font-size:8px;opacity:.5">↗ toque para detalhes</span></div>
+          <div class="ms-title">${ritmoLabel(s.ritmo_estado)}</div>
+          <div class="ms-desc">${ritmoDesc(s)}</div>
+        </div>
+      </div>
+      <button class="start-btn" style="margin-top:12px" onclick="alert('Treino → CP futuro')">
+        <span>▶</span> Iniciar treino de hoje
+      </button>
+    </div>
+
+    <div class="sec">
+      <div class="sec-head"><div class="sec-title">Scores</div><div class="sec-line"></div></div>
+      <div class="scores-grid">
+        ${[['Neural','neural'],['Mecânica','mecanica'],['Metabólica','metabolica'],
+           ['Técnica','tecnica'],['Ritmo','ritmo'],['Momentum','momentum']].map(([lbl,k]) => {
+          const v = scores[k] || 0;
+          const pct = Math.min(v/10,1)*100;
+          return `<div class="score-chip" onclick="openModal('score_${k}','${s.id}')">
+            <div class="score-chip-lbl">${lbl}</div>
+            <div class="score-chip-bar"><div class="score-chip-fill" style="width:${pct}%;background:${scoreColor(v)}"></div></div>
+            <div class="score-chip-val">${v.toFixed(1)}</div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+
+    ${buildCheckinCard(s)}
+
+    <div class="sec">
+      <div class="sec-head"><div class="sec-title">Esta semana</div><div class="sec-line"></div></div>
+      <div class="sem-grid" id="week-grid-${s.id}">
+        <div class="dia hoje" onclick="openModal('dia_hoje','${s.id}')">
+          <div class="dia-dot hoje"></div>
+          <div class="dia-lbl">Hoje</div>
+          <div class="dia-tipo hoje-txt">Próximo treino</div>
+        </div>
+        <div class="dia rest"><div class="dia-dot rest"></div><div class="dia-lbl">—</div><div class="dia-tipo">—</div></div>
+        <div class="dia rest"><div class="dia-dot rest"></div><div class="dia-lbl">—</div><div class="dia-tipo">—</div></div>
+      </div>
+    </div>
+
+    ${s.notas ? `
+    <div class="sec">
+      <div class="sec-head"><div class="sec-title">Nota do PT</div><div class="sec-line"></div></div>
+      <div class="msg-card" onclick="openModal('notas_pt','${s.id}')">
+        <div class="msg-author">João Pedro Almeida <span style="opacity:.5">↗</span></div>
+        <div class="msg-text">"${s.notas}"</div>
+      </div>
+    </div>` : ''}
+
+    <div class="sec">
+      <div class="sec-head"><div class="sec-title">Análise do momento</div><div class="sec-line"></div></div>
+      <div class="ai-card" id="ai-card-${s.id}" onclick="openModal('ai_narrative','${s.id}')">
+        <div class="ai-card-label"><span class="ai-dot"></span>Momentum IA · gerado agora</div>
+        <div class="ai-text loading" id="ai-text-${s.id}">
+          <div class="ai-skeleton">
+            <div class="ai-skel-line"></div>
+            <div class="ai-skel-line"></div>
+            <div class="ai-skel-line"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Dispara geração da narrativa após render
+  generateNarrative(s);
+}
+
+// ═══════════════════════════════════════════════════
+// CHECK-IN CARD — PT DASHBOARD
+// ═══════════════════════════════════════════════════
+function buildCheckinCard(s) {
+  const ci = STATE.checkins[s.id];
+  const perf = s.perfil_recuperacao || {};
+
+  const dispEmoji = { 3:'⚡', 2:'😐', 1:'😴' };
+  const sonoLabel = { bom:'Bom', normal:'Normal', ruim:'Ruim' };
+  const alimentLabel = { boa:'Boa', normal:'Normal', ruim:'Ruim' };
+
+  const prontidaoCor = p =>
+    p >= 8 ? 'var(--moss2)' : p >= 6 ? 'var(--gold)' : p >= 4 ? 'var(--copper2)' : 'var(--danger2)';
+
+  if (!ci) {
+    // Sem check-in hoje — mostra perfil de recuperação histórico
+    const dispMedia = perf.disponibilidade_media;
+    return `
+      <div class="sec">
+        <div class="sec-head"><div class="sec-title">Check-in de hoje</div><div class="sec-line"></div></div>
+        <div class="card" style="padding:14px 16px;opacity:.7">
+          <div style="font-size:8px;text-transform:uppercase;letter-spacing:.16em;color:var(--ink3);margin-bottom:8px">
+            Sem check-in hoje
+          </div>
+          ${dispMedia ? `
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="flex:1">
+              <div style="font-size:8px;color:var(--ink3);margin-bottom:4px">Prontidão média histórica</div>
+              <div style="height:3px;background:var(--b);border-radius:2px;overflow:hidden">
+                <div style="height:100%;width:${dispMedia*10}%;background:${prontidaoCor(dispMedia)};border-radius:2px"></div>
+              </div>
+            </div>
+            <div style="font-family:'Cormorant Garamond',serif;font-style:italic;font-size:20px;color:${prontidaoCor(dispMedia)}">${dispMedia.toFixed(1)}</div>
+          </div>` : '<div style="font-size:9px;color:var(--ink3)">Sem histórico ainda</div>'}
+        </div>
+      </div>`;
+  }
+
+  const p = ci.estado_prontidao || 5;
+  const f = ci.fator_label || (p >= 8 ? 'Treino completo' : p >= 6 ? 'Volume −10%' : p >= 4 ? 'Sessão adaptada' : 'Sessão leve');
+
+  return `
+    <div class="sec">
+      <div class="sec-head"><div class="sec-title">Check-in de hoje</div><div class="sec-line"></div></div>
+      <div class="card ms-clickable" style="padding:14px 16px" onclick="openModal('checkin_detalhe','${s.id}')">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+          <div style="font-size:28px">${dispEmoji[ci.disposicao] || '😐'}</div>
+          <div style="flex:1">
+            <div style="font-size:8px;text-transform:uppercase;letter-spacing:.16em;color:var(--copper2);margin-bottom:3px">
+              Prontidão ${p}/10 · ${f}
+            </div>
+            <div style="height:3px;background:var(--b);border-radius:2px;overflow:hidden">
+              <div style="height:100%;width:${p*10}%;background:${prontidaoCor(p)};border-radius:2px;transition:width .6s ease"></div>
+            </div>
+          </div>
+          <div style="font-family:'Cormorant Garamond',serif;font-style:italic;font-size:24px;color:${prontidaoCor(p)}">${p}</div>
+        </div>
+        <div style="display:flex;gap:6px">
+          ${ci.sono ? `<span style="font-size:7px;padding:2px 8px;border:1px solid var(--b2);border-radius:2px;color:var(--ink3)">
+            sono ${sonoLabel[ci.sono]?.toLowerCase()}</span>` : ''}
+          ${ci.alimentacao ? `<span style="font-size:7px;padding:2px 8px;border:1px solid var(--b2);border-radius:2px;color:var(--ink3)">
+            alimentação ${alimentLabel[ci.alimentacao]?.toLowerCase()}</span>` : ''}
+          ${!ci.sono && !ci.alimentacao ? `<span style="font-size:7px;color:var(--ink3)">opcionais não preenchidos</span>` : ''}
+          ${perf.correlacao_sono_pse >= 0.8 && ci.sono === 'ruim' ?
+            `<span style="font-size:7px;padding:2px 8px;border:1px solid rgba(184,64,48,.3);border-radius:2px;color:var(--danger2)">⚠ sono preditor forte</span>` : ''}
+        </div>
+        <div style="font-size:7px;color:var(--ink3);margin-top:8px;text-align:right">↗ detalhes</div>
+      </div>
+    </div>`;
+}
+
+// ═══════════════════════════════════════════════════
+// RENDER — EVOLUÇÃO
+// ═══════════════════════════════════════════════════
+function renderEvolucao() {
+  const s = getActiveStudent();
+  const el = document.getElementById('evolucao-content');
+  if (!s) { el.innerHTML = '<div class="empty-state">← selecione um aluno</div>'; return; }
+  const sess = (STATE.sessions[s.id] || []).filter(x => !x.simulado);
+
+  // ── Chips longitudinais (RN 27) ──────────────────
+  const chips = calcLongitudinalChips(s, sess);
+
+  // ── Gráfico IC ──────────────────────────────────
+  const chartHTML = buildICChart(sess, s.id);
+
+  // ── PRs por exercício ────────────────────────────
+  const prsHTML = buildPRs(sess, s.id);
+
+  // ── Semanas do mesociclo ─────────────────────────
+  const mesoHTML = buildMesoWeeks(s, sess);
+
+  // ── Tendência PSE ────────────────────────────────
+  const pseHTML = buildPSETrend(sess);
+
+  // ── CK6: IC vs Prontidão ─────────────────────────
+  const icProntidaoHTML = buildICvsProntidao(s, sess);
+
+  el.innerHTML = `
+    ${chips.length ? `
+    <div class="sec">
+      <div class="sec-head"><div class="sec-title">Alertas ativos</div><div class="sec-line"></div></div>
+      <div class="chips-row">
+        ${chips.map(c => `<span class="chip chip-${c.c}" title="${c.t}">${c.t}</span>`).join('')}
+      </div>
+    </div>` : ''}
+
+    <div class="sec">
+      <div class="sec-head"><div class="sec-title">Mesociclo</div><div class="sec-line"></div></div>
+      <div class="chart-card" onclick="openModal('meso','${s.id}')">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div>
+            <div style="font-family:'Cormorant Garamond',serif;font-style:italic;font-size:15px;color:var(--gold)">${s.mesociclo || '—'}</div>
+            <div class="chart-lbl" style="margin-top:2px">${s.divisao || ''}</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-family:'Cormorant Garamond',serif;font-style:italic;font-size:22px;color:var(--gold)" id="meso-pct-${s.id}">—</div>
+            <div class="chart-lbl">concluído</div>
+          </div>
+        </div>
+        <div style="height:3px;background:var(--b);border-radius:2px;overflow:hidden;margin-bottom:10px">
+          <div id="meso-bar-${s.id}" style="height:100%;width:0%;background:linear-gradient(90deg,var(--copper),var(--gold));border-radius:2px;transition:width .6s ease"></div>
+        </div>
+        ${mesoHTML}
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-head"><div class="sec-title">Índice de carga · últimas sessões</div><div class="sec-line"></div></div>
+      <div class="chart-card" onclick="openModal('ic_chart','${s.id}')">
+        ${sess.length < 2
+          ? `<div class="pr-empty">mínimo 2 sessões para exibir gráfico</div>`
+          : chartHTML}
+      </div>
+    </div>
+
+    ${icProntidaoHTML}
+
+    ${sess.length >= 2 ? `
+    <div class="sec">
+      <div class="sec-head"><div class="sec-title">Tendência de PSE</div><div class="sec-line"></div></div>
+      <div class="chart-card" onclick="openModal('pse_trend','${s.id}')">
+        ${pseHTML}
+      </div>
+    </div>` : ''}
+
+    <div class="sec">
+      <div class="sec-head"><div class="sec-title">Recordes por exercício</div><div class="sec-line"></div></div>
+      ${prsHTML}
+    </div>
+  `;
+
+  // Anima barra do meso após render
+  requestAnimationFrame(() => updateMesoBar(s, sess));
+}
+
+function buildICvsProntidao(s, sess) {
+  // Cruza sessões com prontidão registrada
+  const dados = sess
+    .filter(ss => ss.estado_prontidao_entrada != null && (ss.indice || ss.indice_carga))
+    .slice(0, 10)
+    .reverse();
+
+  if (dados.length < 3) return '';
+
+  const maxIC = Math.max(...dados.map(x => x.indice || x.indice_carga || 0), 1);
+  const prontidaoCor = p => p >= 8 ? '#6aa050' : p >= 6 ? '#c8a060' : p >= 4 ? '#a07840' : '#b84030';
+
+  // Correlação simples IC vs prontidão
+  const pArr = dados.map(x => x.estado_prontidao_entrada);
+  const iArr = dados.map(x => x.indice || x.indice_carga || 0);
+  const pMed = pArr.reduce((a,b)=>a+b,0)/pArr.length;
+  const iMed = iArr.reduce((a,b)=>a+b,0)/iArr.length;
+  const num  = pArr.reduce((s,p,i)=>s+(p-pMed)*(iArr[i]-iMed),0);
+  const den  = Math.sqrt(pArr.reduce((s,p)=>s+(p-pMed)**2,0)*iArr.reduce((s,v)=>s+(v-iMed)**2,0));
+  const corr = den ? (num/den) : 0;
+  const corrLabel = corr > 0.6 ? 'forte positiva' : corr > 0.3 ? 'moderada' : corr < -0.3 ? 'negativa' : 'fraca';
+  const corrCor = corr > 0.4 ? 'var(--moss2)' : corr > 0 ? 'var(--gold)' : 'var(--danger2)';
+
+  const bars = dados.map(ss => {
+    const ic = ss.indice || ss.indice_carga || 0;
+    const p  = ss.estado_prontidao_entrada;
+    const h  = Math.max(Math.round(ic/maxIC*56), 3);
+    return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px">
+      <div style="width:100%;height:${h}px;background:${prontidaoCor(p)};border-radius:2px 2px 0 0;opacity:.75"></div>
+      <div style="font-size:6px;color:var(--ink3)">${p}</div>
+    </div>`;
+  }).join('');
+
+  return `
+    <div class="sec">
+      <div class="sec-head"><div class="sec-title">IC vs prontidão</div><div class="sec-line"></div></div>
+      <div class="chart-card" onclick="openModal('ic_prontidao','${s.id}')">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px">
+          <div class="chart-lbl">IC colorido por prontidão do dia</div>
+          <div style="font-size:9px;color:${corrCor}">r = ${corr.toFixed(2)} · ${corrLabel}</div>
+        </div>
+        <div style="display:flex;align-items:flex-end;gap:3px;height:64px">${bars}</div>
+        <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+          ${[['≥8','#6aa050','alta'],['6–7','#c8a060','boa'],['4–5','#a07840','moderada'],['≤3','#b84030','baixa']].map(([lbl,cor,desc])=>`
+            <div style="display:flex;align-items:center;gap:4px;font-size:7px;color:var(--ink3)">
+              <div style="width:8px;height:8px;border-radius:1px;background:${cor};opacity:.75"></div>
+              ${lbl} · ${desc}
+            </div>`).join('')}
+        </div>
+      </div>
+    </div>`;
+}
+
+function calcLongitudinalChips(s, sessoes) {
+  const chips = [];
+  if (sessoes.length < 3) return chips;
+
+  // delta_pse_crescente
+  const pses = sessoes.slice(0, 3).map(x => x.pse || 0);
+  if (pses[0] > pses[1] && pses[1] > pses[2] && pses[0] >= 7.5) {
+    chips.push({c:'warn',
+      t:`⚠ delta_pse_crescente — ${pses[2].toFixed(1)}→${pses[1].toFixed(1)}→${pses[0].toFixed(1)}`});
+  }
+
+  // ritmo_em_queda
+  if (sessoes.length >= 6) {
+    const bloco1 = sessoes.slice(0, 4);
+    const bloco2 = sessoes.slice(4, 8);
+    if (bloco2.length >= 2) {
+      const ritmo = ss => ss.reduce((s, x) => s + (x.indice||x.indice_carga||0) / Math.max(x.pse||7, 1), 0) / ss.length;
+      const delta = (ritmo(bloco1) - ritmo(bloco2)) / ritmo(bloco2);
+      if (delta <= -0.10)
+        chips.push({c:'alert', t:`⚠ ritmo_em_queda — IC÷PSE ${Math.round(Math.abs(delta)*100)}% abaixo`});
+      else if (delta <= -0.05)
+        chips.push({c:'warn', t:`⚠ ritmo_em_queda leve — −${Math.round(Math.abs(delta)*100)}%`});
+    }
+  }
+
+  // pse_ic_divergência (última sessão)
+  if (sessoes.length >= 4) {
+    const ultima = sessoes[0];
+    const mediaIC = sessoes.slice(1, 9).reduce((s, x) => s + (x.indice||x.indice_carga||0), 0) / Math.min(sessoes.length-1, 8);
+    if ((ultima.pse||0) >= 7.5 && (ultima.indice||ultima.indice_carga||0) < mediaIC * 0.85)
+      chips.push({c:'alert', t:'⚠ pse_ic_divergência — esforço alto, IC abaixo do usual'});
+  }
+
+  return chips;
+}
+
+function buildICChart(sess, sid) {
+  const items = sess.slice(0, 12).reverse(); // cronológico
+  if (items.length < 2) return '';
+  const maxIC = Math.max(...items.map(x => x.indice || x.indice_carga || 0), 1);
+
+  const bars = items.map((ss, i) => {
+    const h = Math.max(Math.round((ss.indice || ss.indice_carga || 0) / maxIC * 64), 4);
+    const isLast = i === items.length - 1;
+    const col = isLast ? 'var(--gold)' : 'var(--copper)';
+    const lbl = ( ss.date||ss.data||'').slice(0, 5);
+    return `<div class="ic-bar-col" onclick="openModal('sessao_${ss.id || i}','${sid}')">
+      <div class="ic-bar" style="height:${h}px;background:${col};opacity:${isLast?1:0.6}"></div>
+      <div class="ic-bar-lbl">${lbl}</div>
+    </div>`;
+  }).join('');
+
+  // Tendência linear simples
+  const ics = items.map(x => x.indice || x.indice_carga || 0);
+  const n = ics.length;
+  const meanX = (n - 1) / 2;
+  const meanY = ics.reduce((a, b) => a + b, 0) / n;
+  const num = ics.reduce((s, y, i) => s + (i - meanX) * (y - meanY), 0);
+  const den = ics.reduce((s, _, i) => s + (i - meanX) ** 2, 0);
+  const slope = den ? num / den : 0;
+  const trendPct = Math.round(slope / (meanY || 1) * 100);
+  const trendLabel = trendPct > 3 ? `↑ +${trendPct}%` : trendPct < -3 ? `↓ ${trendPct}%` : '→ estável';
+  const trendColor = trendPct > 3 ? 'var(--moss2)' : trendPct < -3 ? 'var(--danger2)' : 'var(--ink3)';
+
+  return `
+    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px">
+      <div class="chart-lbl">Últimas ${items.length} sessões</div>
+      <div style="font-family:'Cormorant Garamond',serif;font-style:italic;font-size:16px;color:${trendColor}">${trendLabel}</div>
+    </div>
+    <div class="ic-bar-group">${bars}</div>
+    <div class="ic-legend">
+      <div class="ic-leg-item"><div class="ic-leg-dot" style="background:var(--gold)"></div>mais recente</div>
+      <div class="ic-leg-item"><div class="ic-leg-dot" style="background:var(--copper);opacity:.6"></div>anteriores</div>
+    </div>`;
+}
+
+function buildPSETrend(sess) {
+  const items = sess.slice(0, 10).reverse();
+  if (items.length < 2) return '';
+  const pses = items.map(x => x.pse || 0);
+  const max = Math.max(...pses, 10);
+  const w = 100 / (items.length - 1);
+
+  // Pontos SVG
+  const pts = pses.map((p, i) => {
+    const x = i * w;
+    const y = 100 - (p / max * 80) - 10;
+    return `${x},${y}`;
+  }).join(' ');
+
+  const avgPSE = (pses.reduce((a,b)=>a+b,0)/pses.length).toFixed(1);
+  const ultima = pses[pses.length-1].toFixed(1);
+
+  return `
+    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
+      <div class="chart-lbl">PSE média: ${avgPSE}</div>
+      <div style="font-family:'Cormorant Garamond',serif;font-style:italic;font-size:14px;color:var(--gold)">última: ${ultima}</div>
+    </div>
+    <svg width="100%" height="56" viewBox="0 0 100 100" preserveAspectRatio="none" style="display:block">
+      <polyline points="${pts}" fill="none" stroke="var(--copper2)" stroke-width="2.5"
+        stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>
+      ${pses.map((p,i) => {
+        const x = i * w;
+        const y = 100 - (p / max * 80) - 10;
+        const isLast = i === pses.length - 1;
+        return `<circle cx="${x}" cy="${y}" r="${isLast?3:2}" fill="${isLast?'var(--gold)':'var(--copper2)'}" vector-effect="non-scaling-stroke"/>`;
+      }).join('')}
+    </svg>
+    <div class="chart-lbl" style="margin-top:6px">PSE relatada por sessão · ↗ toque para detalhar</div>`;
+}
+
+function buildPRs(sess, sid) {
+  if (!sess.length) return '<div class="pr-empty">sem sessões registradas</div>';
+
+  // Agrupa por exercício, pega melhor kg×reps
+  const exMap = {};
+  sess.forEach(ss => {
+    (ss.exercicios || []).forEach(ex => {
+      const nome = ex.nome || ex.n;
+      if (!nome) return;
+      const score = (ex.kg || 0) * (ex.r || ex.reps || 1);
+      if (!exMap[nome] || score > exMap[nome].score) {
+        exMap[nome] = { nome, kg: ex.kg||0, r: ex.r||ex.reps||0, s: ex.s||3, score, data: ss.data };
+      }
+    });
+  });
+
+  const prs = Object.values(exMap).sort((a,b) => b.score - a.score).slice(0, 8);
+  if (!prs.length) return '<div class="pr-empty">exercícios sem dados de carga ainda</div>';
+
+  return `<div class="pr-section">
+    ${prs.map(pr => `
+      <div class="pr-row" onclick="openModal('pr_detail','${sid}','${encodeURIComponent(pr.nome)}')">
+        <div class="pr-ico">🏋️</div>
+        <div class="pr-info">
+          <div class="pr-exname">${pr.nome}</div>
+          <div class="pr-desc">${pr.date||pr.data||''} · ${pr.s}×${pr.r} reps</div>
+        </div>
+        <div class="pr-right">
+          <div class="pr-kg">${pr.kg > 0 ? pr.kg : '—'}</div>
+          <div class="pr-reps">${pr.kg > 0 ? 'kg' : 'peso corp.'}</div>
+        </div>
+      </div>`).join('')}
+  </div>`;
+}
+
+function buildMesoWeeks(s, sess) {
+  const total = s.semanas_total || 8;
+  // Estima semana atual pelo número de sessões (aprox 3 sessões/semana)
+  const sessReais = sess.filter(x => !x.simulado).length;
+  const freqSemanal = s.divisao?.includes('4x') ? 4 : s.divisao?.includes('3x') ? 3 : 3;
+  const semanasFeitas = Math.min(Math.floor(sessReais / freqSemanal), total - 1);
+  const semanaAtual = semanasFeitas + 1;
+  const pct = Math.round(semanasFeitas / total * 100);
+
+  // Atualiza barra e %
+  requestAnimationFrame(() => {
+    const bar = document.getElementById(`meso-bar-${s.id}`);
+    const pctEl = document.getElementById(`meso-pct-${s.id}`);
+    if (bar) bar.style.width = pct + '%';
+    if (pctEl) pctEl.textContent = pct + '%';
+  });
+
+  return `<div class="meso-weeks-grid">
+    ${Array.from({length: total}, (_, i) => {
+      const n = i + 1;
+      const done = n < semanaAtual;
+      const cur = n === semanaAtual;
+      return `<div class="meso-wk ${done?'done-wk':''} ${cur?'cur-wk':''}"
+        onclick="openModal('semana_${n}','${s.id}')">
+        <div class="meso-wk-n">S${n}</div>
+        <div class="meso-wk-st" style="color:${done?'var(--moss2)':cur?'var(--copper)':'var(--ink3)'}">
+          ${done?'✓':cur?'→':'—'}
+        </div>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+function updateMesoBar(s, sess) {
+  // Já tratado dentro de buildMesoWeeks via requestAnimationFrame
+}
+
+// ═══════════════════════════════════════════════════
+// RENDER — HISTÓRICO
+// ═══════════════════════════════════════════════════
+function renderHistorico() {
+  const s = getActiveStudent();
+  const el = document.getElementById('historico-content');
+  if (!s) { el.innerHTML = '<div class="empty-state">← selecione um aluno</div>'; return; }
+  const sess = (STATE.sessions[s.id] || []).filter(x => !x.simulado);
+
+  if (!sess.length) {
+    el.innerHTML = '<div class="empty-state">sem sessões no banco ainda</div>';
+    return;
+  }
+
+  el.innerHTML = `
+    <div class="sec">
+      <div class="sec-head">
+        <div class="sec-title">${sess.length} sessão${sess.length !== 1 ? 'ões' : ''}</div>
+        <div class="sec-line"></div>
+      </div>
+      ${sess.map((ss, i) => {
+        const exs = ss.exercicios || [];
+        const maxPSE = Math.max(...exs.map(x => x.pse||0), ss.pse||0, 0);
+        const simChips = calcSessionChips(ss, exs);
+        return `
+        <div class="hist-row" id="hist-row-${i}" onclick="toggleHistRow(${i})">
+          <div class="hist-hd">
+            <div class="hist-tipo">${ss.tipo || ss.treino_id || '—'}</div>
+            <div class="hist-date">${ss.date||ss.data||''}</div>
+          </div>
+          <div class="hist-bar-bg">
+            <div class="hist-bar-fill" style="width:${Math.min((ss.pse||0)/10,1)*100}%"></div>
+          </div>
+          <div class="hist-tags" style="justify-content:space-between">
+            <div style="display:flex;gap:5px;flex-wrap:wrap">
+              <span class="hist-tag">PSE ${ss.pse?.toFixed(1)||'—'}</span>
+              ${ss.indice ? `<span class="hist-tag">IC ${ss.indice||ss.indice_carga}</span>` : ''}
+              ${ss.neural  ? `<span class="hist-tag">N ${Math.round(ss.neural)}</span>` : ''}
+              ${simChips.map(c => `<span class="hist-tag" style="color:${c.c==='alert'?'var(--danger2)':c.c==='warn'?'var(--copper2)':'var(--moss2)'}">● ${c.short}</span>`).join('')}
+            </div>
+            <span style="font-size:8px;color:var(--ink3)">↕</span>
+          </div>
+
+          <div class="hist-detail" id="hist-detail-${i}">
+            ${exs.length ? `
+              <div style="margin-bottom:8px">
+                ${exs.map(ex => `
+                  <div class="hist-ex-row">
+                    <span>${ex.nome||ex.n||'—'}</span>
+                    <span style="color:var(--ink3)">
+                      ${ex.s||3}×${ex.r||ex.reps||'?'} ${ex.kg>0?ex.kg+'kg':''}
+                      ${ex.pse ? `· PSE ${ex.pse}` : ''}
+                    </span>
+                  </div>`).join('')}
+              </div>` : ''}
+
+            ${(ss.neural || ss.mecanica || ss.metabolica) ? `
+              <div class="hist-dims">
+                ${ss.neural    ? `<div class="hist-dim"><div class="hist-dim-lbl">Neural</div><div class="hist-dim-val">${Math.round(ss.neural)}</div></div>` : ''}
+                ${ss.mecanica  ? `<div class="hist-dim"><div class="hist-dim-lbl">Mecânica</div><div class="hist-dim-val">${Math.round(ss.mecanica)}</div></div>` : ''}
+                ${ss.metabolica? `<div class="hist-dim"><div class="hist-dim-lbl">Metabólica</div><div class="hist-dim-val">${Math.round(ss.metabolica)}</div></div>` : ''}
+              </div>` : ''}
+
+            ${ss.ratio_adaptacao ? `
+              <div style="margin-top:8px;font-size:8px;color:var(--ink3)">
+                RatioAdaptação: <span style="color:var(--gold)">${ss.ratio_adaptacao.toFixed(3)}</span>
+                <span style="opacity:.5"> · apenas como tendência relativa</span>
+              </div>` : ''}
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
+}
+
+function calcSessionChips(ss, exs) {
+  const chips = [];
+  if (!exs.length) return chips;
+  const pses = exs.map(x => x.pse||0).filter(Boolean);
+  if (pses.length >= 4) {
+    const metade = Math.floor(pses.length / 2);
+    const inicio = pses.slice(0, metade).reduce((a,b)=>a+b,0)/metade;
+    const fim    = pses.slice(metade).reduce((a,b)=>a+b,0)/(pses.length-metade);
+    if (inicio > fim + 1.5) chips.push({c:'warn', short:'fadiga precoce'});
+  }
+  const sobrecarga = pses.filter((p,i) => i < Math.floor(pses.length/2) && p >= 9).length;
+  if (sobrecarga >= 3) chips.push({c:'alert', short:'sobrecarga PSE'});
+  if (pses.length >= 2 && pses.every(p => p <= 6.5)) chips.push({c:'ok', short:'progressão_ok'});
+  return chips;
+}
+
+function toggleHistRow(i) {
+  const detail = document.getElementById(`hist-detail-${i}`);
+  if (!detail) return;
+  const isOpen = detail.classList.contains('open');
+  // fecha todos
+  document.querySelectorAll('.hist-detail.open').forEach(d => d.classList.remove('open'));
+  if (!isOpen) detail.classList.add('open');
+  logClick(STATE.activeId, `historico_row_${i}`);
+}
+
+// ═══════════════════════════════════════════════════
+// MODAL DRILL-DOWN
+// ═══════════════════════════════════════════════════
+const SCORE_INFO = {
+  neural:    { label:'Neural', desc:'Capacidade do sistema nervoso de recrutar unidades motoras com alta intensidade. Reflete adaptações a exercícios com alta demanda de força máxima e potência.' },
+  mecanica:  { label:'Mecânica', desc:'Volume de trabalho muscular acumulado — séries × repetições × carga. Principal driver de hipertrofia quando combinado com técnica adequada.' },
+  metabolica:{ label:'Metabólica', desc:'Demanda cardiovascular e metabólica da sessão. Importante para condicionamento e densidade de treino.' },
+  tecnica:   { label:'Técnica', desc:'Índice de qualidade de execução dos exercícios ao longo das sessões. Inclui consistência de amplitude, controle excêntrico e simetria.' },
+  ritmo:     { label:'Ritmo', desc:'Consistência de frequência de treino versus o planejado. Alunos com ritmo alto tendem a ter progressão mais previsível.' },
+  momentum:  { label:'Momentum', desc:'Score composto que agrega as 5 dimensões acima. Reflete a trajetória de evolução do aluno — não um valor absoluto, mas uma tendência.' },
+};
+
+function openModal(type, studentId, extra) {
+  const s = STATE.students.find(x => x.id === studentId);
+  const body = document.getElementById('modal-body');
+  let html = '';
+
+  if (type === 'checkin_detalhe') {
+    const ci = STATE.checkins[s?.id];
+    const perf = s?.perfil_recuperacao || {};
+    const dispMap = {3:'⚡ Disposto', 2:'😐 Normal', 1:'😴 Cansado'};
+    const p = ci?.estado_prontidao || 5;
+    const pCor = p>=8?'var(--moss2)':p>=6?'var(--gold)':p>=4?'var(--copper2)':'var(--danger2)';
+    html = `<div class="modal-title">Check-in de hoje</div>
+      <div class="modal-sub">${s?.name} · ${new Date().toLocaleDateString('pt-BR')}</div>
+      ${ci ? `
+      <div class="modal-prose">
+        <strong>Disposição:</strong> ${dispMap[ci.disposicao]||'—'}<br>
+        ${ci.cansaco_nivel?`<strong>Nível detalhado:</strong> ${ci.cansaco_nivel}/10<br>`:''}
+        <strong>Sono:</strong> ${ci.sono||'não informado'}<br>
+        <strong>Alimentação:</strong> ${ci.alimentacao||'não informada'}<br><br>
+        <strong>Prontidão calculada:</strong> ${p}/10
+      </div>
+      <div style="height:4px;background:var(--b);border-radius:2px;overflow:hidden;margin:12px 0">
+        <div style="height:100%;width:${p*10}%;background:${pCor};border-radius:2px"></div>
+      </div>` : '<div class="modal-prose">Sem check-in registrado hoje.</div>'}
+      ${perf.disponibilidade_media ? `
+      <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--b)">
+        <div class="modal-sub">Perfil histórico</div>
+        <div class="modal-prose">
+          <strong>Média:</strong> ${perf.disponibilidade_media}/10 ·
+          <strong>Variabilidade:</strong> ${perf.variabilidade||'—'}<br>
+          <strong>Sono médio:</strong> ${perf.sono_medio||'—'} ·
+          <strong>Correlação sono→PSE:</strong> ${perf.correlacao_sono_pse?(perf.correlacao_sono_pse*100).toFixed(0)+'%':'—'}
+        </div>
+        ${perf.padrao_semanal ? `
+        <div style="margin-top:12px;display:flex;gap:4px;flex-wrap:wrap">
+          ${Object.entries(perf.padrao_semanal).filter(([,v])=>v).map(([dia,v])=>`
+            <div style="flex:1;min-width:32px;padding:6px 4px;background:var(--bg3);border:1px solid var(--b);border-radius:2px;text-align:center">
+              <div style="font-size:6px;text-transform:uppercase;color:var(--ink3);margin-bottom:3px">${dia}</div>
+              <div style="font-size:11px;color:${v>=8?'var(--moss2)':v>=6?'var(--gold)':'var(--copper2)'}">${v}</div>
+            </div>`).join('')}
+        </div>` : ''}
+      </div>` : ''}`;
+
+  } else if (type === 'momentum') {
+    html = `<div class="modal-title">Momentum</div>
+      <div class="modal-sub">${s?.name} · score ${s?.scores?.momentum?.toFixed(1)}</div>
+      <div class="modal-prose">
+        O Momentum é um score composto que reflete a <strong>trajetória de evolução</strong> do aluno
+        — não um valor absoluto, mas uma tendência relativa ao próprio histórico.<br><br>
+        Estado atual: <strong>${ritmoLabel(s?.ritmo_estado)}</strong><br>
+        ${ritmoDesc(s || {})}
+      </div>`;
+  } else if (type.startsWith('score_')) {
+    const key = type.replace('score_', '');
+    const info = SCORE_INFO[key] || {};
+    const val = s?.scores?.[key] || 0;
+    html = `<div class="modal-title">${info.label}</div>
+      <div class="modal-sub">${s?.name} · ${val.toFixed(1)} / 10</div>
+      <div style="height:4px;background:var(--b);border-radius:2px;overflow:hidden;margin-bottom:16px">
+        <div style="height:100%;width:${val*10}%;background:${scoreColor(val)};border-radius:2px"></div>
+      </div>
+      <div class="modal-prose">${info.desc}</div>`;
+  } else if (type === 'notas_pt') {
+    html = `<div class="modal-title">Nota do PT</div>
+      <div class="modal-sub">${s?.name}</div>
+      <div class="modal-prose" style="font-family:'Cormorant Garamond',serif;font-style:italic;font-size:15px;line-height:2">
+        "${s?.notas}"
+      </div>
+      ${s?.anamnese ? `<div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--b)">
+        <div class="modal-sub">Anamnese</div>
+        <div class="modal-prose">
+          <strong>Objetivo:</strong> ${s.anamnese.objetivo}<br>
+          <strong>Histórico:</strong> ${s.anamnese.historico}<br>
+          <strong>Restrições:</strong> ${s.anamnese.restricoes}<br>
+          <strong>Disponibilidade:</strong> ${s.anamnese.disponibilidade}
+        </div>
+      </div>` : ''}`;
+  } else if (type === 'ic_prontidao') {
+    const sess = (STATE.sessions[s?.id]||[]).filter(x => x.estado_prontidao_entrada != null);
+    html = `<div class="modal-title">IC vs Prontidão</div>
+      <div class="modal-sub">${s?.name} · ${sess.length} sessões com check-in</div>
+      <div class="modal-prose">
+        Mostra como o índice de carga executado varia conforme a prontidão declarada no check-in.<br><br>
+        ${sess.length >= 3 ? sess.slice(0,10).reverse().map(ss => {
+          const ic = Math.round(ss.indice||ss.indice_carga||0);
+          const p  = ss.estado_prontidao_entrada;
+          const d  = ss.date||ss.data||'—';
+          const delta = ss.delta_ic ? (ss.delta_ic > 0 ? `+${Math.round(ss.delta_ic)}` : Math.round(ss.delta_ic)) : '—';
+          return `<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--b);font-size:9px">
+            <span style="color:var(--ink3)">${d}</span>
+            <span>prontidão <strong style="color:${p>=8?'var(--moss2)':p>=6?'var(--gold)':p>=4?'var(--copper2)':'var(--danger2)'}">${p}</strong></span>
+            <span>IC <strong style="color:var(--gold)">${ic}</strong></span>
+            ${ss.delta_ic != null ? `<span style="color:${ss.delta_ic>=0?'var(--moss2)':'var(--danger2)'}">Δ${delta}</span>` : ''}
+          </div>`;
+        }).join('') : '<span style="color:var(--ink3)">Dados insuficientes — mínimo 3 sessões com check-in.</span>'}
+      </div>`;
+
+  } else if (type === 'ic_chart') {
+    const sess = (STATE.sessions[s?.id]||[]).filter(x=>!x.simulado);
+    const items = sess.slice(0,12).reverse();
+    const ics = items.map(x=>x.indice||0);
+    const avg = ics.length ? Math.round(ics.reduce((a,b)=>a+b,0)/ics.length) : 0;
+    const max = Math.max(...ics,1);
+    const min = Math.min(...ics.filter(x=>x>0),0);
+    html = `<div class="modal-title">Índice de Carga</div>
+      <div class="modal-sub">${s?.name} · últimas ${items.length} sessões</div>
+      <div class="modal-prose">
+        <strong>Média:</strong> ${avg} · <strong>Pico:</strong> ${max} · <strong>Mínimo:</strong> ${min}<br><br>
+        IC = (wN × Neural) + (wM × Mecânica) + (wMet × Metabólica).<br>
+        Os pesos variam por valência — ver modelo matemático §4.
+      </div>
+      <div style="margin-top:14px">
+        ${items.map(ss=>`
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+            <div style="font-size:8px;color:var(--ink3);width:44px;flex-shrink:0">${(ss.date||ss.data||'').slice(0,5)}</div>
+            <div style="flex:1;height:3px;background:var(--b);border-radius:2px;overflow:hidden">
+              <div style="height:100%;width:${(ss.indice||ss.indice_carga||0)/max*100}%;background:var(--copper);border-radius:2px"></div>
+            </div>
+            <div style="font-family:'Cormorant Garamond',serif;font-style:italic;font-size:14px;color:var(--gold);width:36px;text-align:right">${ss.indice||'—'}</div>
+          </div>`).join('')}
+      </div>`;
+
+  } else if (type === 'pse_trend') {
+    const sess = (STATE.sessions[s?.id]||[]).filter(x=>!x.simulado);
+    const items = sess.slice(0,10).reverse();
+    html = `<div class="modal-title">Tendência de PSE</div>
+      <div class="modal-sub">${s?.name}</div>
+      <div class="modal-prose">
+        PSE relatada sessão a sessão. ΔPSE crescendo = fadiga acumulada não capturada pelo IC.<br><br>
+        ${items.map((ss,i)=>{
+          const prev = items[i-1];
+          const delta = prev ? (ss.pse||0)-(prev.pse||0) : null;
+          const sign = delta===null?'':delta>0.2?`<span style="color:var(--danger2)">↑${delta.toFixed(1)}</span>`:delta<-0.2?`<span style="color:var(--moss2)">↓${Math.abs(delta).toFixed(1)}</span>`:'→';
+          return `<div style="display:flex;justify-content:space-between;font-size:9px;padding:4px 0;border-bottom:1px solid var(--b)">
+            <span style="color:var(--ink3)">${ss.data||'—'} · ${ss.tipo||'—'}</span>
+            <span>PSE <strong style="color:var(--gold)">${(ss.pse||0).toFixed(1)}</strong> ${sign}</span>
+          </div>`;
+        }).join('')}
+      </div>`;
+
+  } else if (type === 'pr_detail') {
+    const nome = decodeURIComponent(extra||'');
+    const sess = (STATE.sessions[s?.id]||[]).filter(x=>!x.simulado);
+    const historico = [];
+    sess.forEach(ss => {
+      (ss.exercicios||[]).forEach(ex => {
+        if ((ex.nome||ex.n||'') === nome)
+          historico.push({data:ss.date||ss.data, kg:ex.kg||0, r:ex.r||ex.reps||0, s:ex.s||3, pse:ex.pse});
+      });
+    });
+    historico.sort((a,b)=>(b.kg||0)-(a.kg||0));
+    html = `<div class="modal-title">${nome}</div>
+      <div class="modal-sub">Histórico de registros</div>
+      <div class="modal-prose">
+        ${historico.length
+          ? historico.map(h=>`
+            <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--b);font-size:9px">
+              <span style="color:var(--ink3)">${h.data||'—'}</span>
+              <span>${h.s}×${h.r} ${h.kg>0?h.kg+'kg':'corpo'}${h.pse?` · PSE ${h.pse}`:''}</span>
+            </div>`).join('')
+          : '<span style="color:var(--ink3)">sem registros encontrados</span>'}
+      </div>`;
+
+  } else if (type === 'meso') {
+    html = `<div class="modal-title">Mesociclo</div>
+      <div class="modal-sub">${s?.mesociclo}</div>
+      <div class="modal-prose">
+        <strong>Divisão:</strong> ${s?.divisao}<br>
+        <strong>Objetivo:</strong> ${s?.goal}<br>
+        <strong>Nível:</strong> ${s?.nivel}<br>
+        <strong>Perfil:</strong> ${s?.profile}
+      </div>`;
+  } else if (type === 'ai_narrative') {
+    const cached = AI_CACHE[s?.id];
+    html = `<div class="modal-title">Análise do momento</div>
+      <div class="modal-sub">${s?.name} · gerado agora pela IA</div>
+      <div class="modal-prose ai-modal-text" style="font-family:'Cormorant Garamond',serif;font-style:italic;font-size:15px;line-height:2">
+        ${cached || '<span style="color:var(--ink3)">gerando…</span>'}
+      </div>
+      <div style="margin-top:20px;padding-top:14px;border-top:1px solid var(--b)">
+        <div class="modal-sub" style="margin-bottom:8px">Contexto usado</div>
+        <div class="modal-prose">
+          Ritmo: <strong>${s?.ritmo_estado}</strong> ·
+          Momentum: <strong>${s?.scores?.momentum?.toFixed(1)}</strong> ·
+          Neural: <strong>${s?.scores?.neural?.toFixed(1)}</strong> ·
+          Mecânica: <strong>${s?.scores?.mecanica?.toFixed(1)}</strong>
+        </div>
+      </div>
+      <button onclick="refreshNarrative('${s?.id}')"
+        style="margin-top:14px;width:100%;padding:12px;background:transparent;
+        border:1px solid var(--b2);color:var(--ink2);font-family:'IBM Plex Mono',monospace;
+        font-size:8px;text-transform:uppercase;letter-spacing:.14em;cursor:pointer;border-radius:2px;">
+        ↺ Regerar análise
+      </button>`;
+  } else if (type === 'dia_hoje') {
+    html = `<div class="modal-title">Treino de hoje</div>
+      <div class="modal-sub">${s?.name}</div>
+      <div class="modal-prose">Prescrição detalhada será carregada no CP futuro.</div>`;
+  } else {
+    html = `<div class="modal-title">Detalhes</div>
+      <div class="modal-prose">Em breve — ${type}</div>`;
+  }
+
+  // log click (analytics básico)
+  logClick(studentId, type);
+
+  body.innerHTML = html;
+  document.getElementById('modal').classList.add('open');
+}
+
+function closeModal(e) {
+  if (!e || e.target === document.getElementById('modal')) {
+    document.getElementById('modal').classList.remove('open');
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// CLICK TRACKING (Firestore)
+// ═══════════════════════════════════════════════════
+function logClick(studentId, section) {
+  db.collection('pt_interactions').add({
+    student_id: studentId,
+    section,
+    ts: firebase.firestore.FieldValue.serverTimestamp(),
+    agent: 'pt_dashboard'
+  }).catch(() => {}); // silencioso
+}
+
+// ═══════════════════════════════════════════════════
+// NAV
+// ═══════════════════════════════════════════════════
+function goPage(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('s-' + id)?.classList.add('active');
+  STATE.page = id;
+  document.querySelectorAll('.bnav-item').forEach(b => b.classList.remove('active'));
+  const idx = { home:0, evolucao:1, prescricao:2, historico:3 }[id];
+  if (idx !== undefined) document.querySelectorAll('.bnav-item')[idx]?.classList.add('active');
+  if (id === 'prescricao') initPresc();
+}
+
+// ═══════════════════════════════════════════════════
+// THEME
+// ═══════════════════════════════════════════════════
+function toggleTheme() {
+  const html = document.documentElement;
+  const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  html.setAttribute('data-theme', next);
+  localStorage.setItem('momentum-theme', next);
+}
+(function(){
+  const saved = localStorage.getItem('momentum-theme');
+  if (saved) document.documentElement.setAttribute('data-theme', saved);
+})();
+
+// ═══════════════════════════════════════════════════
+// IA NARRATIVA
+// ═══════════════════════════════════════════════════
+
+// Cache em memória: evita re-gerar ao navegar entre tabs
+const AI_CACHE = {};
+
+function buildNarrativePrompt(s, sessoes) {
+  const scores = s.scores || {};
+  const ultimas = sessoes.filter(x => !x.simulado).slice(0, 5);
+  const pses = ultimas.map(x => x.pse).filter(Boolean);
+  const pse_media = pses.length ? (pses.reduce((a,b)=>a+b,0)/pses.length).toFixed(1) : null;
+  const ics = ultimas.map(x => x.indice || x.indice_carga).filter(Boolean);
+  const ic_trend = ics.length >= 2
+    ? (ics[0] > ics[1] ? 'subindo' : ics[0] < ics[1] ? 'caindo' : 'estável')
+    : null;
+
+  return `Você é o sistema de análise do Momentum, app de personal training científico.
+Gere uma análise curta (2–3 frases, máximo 60 palavras) sobre o momento atual deste aluno.
+Tom: direto, técnico mas acessível. Sem emojis. Sem saudações. Sem "com base nos dados".
+Comece direto pela observação mais relevante.
+Fale na 3ª pessoa (ex: "Ana está..." ou "O ritmo de...").
+Foque no que é mais acionável para o PT hoje.
+
+DADOS DO ALUNO:
+- Nome: ${s.name}
+- Nível: ${s.nivel}
+- Objetivo: ${s.goal}
+- Mesociclo: ${s.mesociclo}
+- Ritmo estado: ${s.ritmo_estado}
+- Risk: ${s.risk}
+- Scores: Neural ${scores.neural} · Mecânica ${scores.mecanica} · Metabólica ${scores.metabolica} · Técnica ${scores.tecnica} · Ritmo ${scores.ritmo} · Momentum ${scores.momentum}
+${pse_media ? `- PSE média últimas ${pses.length} sessões: ${pse_media}` : ''}
+${ic_trend ? `- Tendência de IC: ${ic_trend}` : ''}
+${s.notas ? `- Nota do PT: ${s.notas}` : ''}
+${s.anamnese?.restricoes && s.anamnese.restricoes !== 'Nenhuma' ? `- Restrições: ${s.anamnese.restricoes}` : ''}`;
+}
+
+async function generateNarrative(s) {
+  // Usa cache se já gerou nesta sessão
+  if (AI_CACHE[s.id]) {
+    renderNarrativeText(s.id, AI_CACHE[s.id]);
+    return;
+  }
+
+  const sessoes = STATE.sessions[s.id] || [];
+  const prompt = buildNarrativePrompt(s, sessoes);
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 120,
+        system: 'Você é o sistema de análise do Momentum. Responda APENAS com o texto da análise, sem formatação, sem aspas, sem prefixo.',
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+
+    const data = await res.json();
+    const text = data?.content?.[0]?.text?.trim() || null;
+
+    if (text) {
+      AI_CACHE[s.id] = text;
+      renderNarrativeText(s.id, text);
+      // Salva no modal também se estiver aberto
+      const modalBody = document.getElementById('modal-body');
+      if (modalBody?.querySelector('.ai-modal-text')) {
+        modalBody.querySelector('.ai-modal-text').textContent = text;
+      }
+    } else {
+      renderNarrativeText(s.id, null);
+    }
+  } catch(e) {
+    renderNarrativeText(s.id, null);
+  }
+}
+
+function renderNarrativeText(studentId, text) {
+  const el = document.getElementById(`ai-text-${studentId}`);
+  if (!el) return;
+  if (text) {
+    el.className = 'ai-text';
+    el.textContent = text;
+  } else {
+    el.className = 'ai-text loading';
+    el.textContent = 'Análise indisponível — verifique a conexão.';
+  }
+}
+
+function refreshNarrative(studentId) {
+  delete AI_CACHE[studentId];
+  const s = STATE.students.find(x => x.id === studentId);
+  if (!s) return;
+  // Reseta o card
+  const el = document.getElementById(`ai-text-${studentId}`);
+  if (el) {
+    el.className = 'ai-text loading';
+    el.innerHTML = '<div class="ai-skeleton"><div class="ai-skel-line"></div><div class="ai-skel-line"></div><div class="ai-skel-line"></div></div>';
+  }
+  // Reseta o modal se aberto
+  const modalAI = document.querySelector('.ai-modal-text');
+  if (modalAI) modalAI.innerHTML = '<span style="color:var(--ink3)">gerando…</span>';
+  generateNarrative(s);
+}
+
+// ═══════════════════════════════════════════════════
+// SIMULADOR DE TREINO
+// ═══════════════════════════════════════════════════
+
+// Exercícios genéricos de referência por perfil de aluno
+// (serão substituídos pela prescrição real quando disponível)
+const SIM_PROFILES = {
+  hiper: {
+    wN:0.30, wM:0.40, wMet:0.30,
+    exs:[
+      {nome:'Supino Reto',     kg:60,  s:4, r:10, FC:0.7,DN:5.0,CT:4.0,SV:3.0,IM:7.5,descanso:90},
+      {nome:'Agachamento',     kg:80,  s:4, r:8,  FC:1.2,DN:8.0,CT:6.0,SV:5.0,IM:9.0,descanso:120},
+      {nome:'Puxada Frontal',  kg:55,  s:4, r:10, FC:0.7,DN:5.5,CT:3.5,SV:3.0,IM:7.0,descanso:90},
+      {nome:'Desenvolvimento', kg:40,  s:3, r:10, FC:0.8,DN:5.0,CT:4.0,SV:3.0,IM:6.5,descanso:90},
+      {nome:'Cadeira Ext.',    kg:50,  s:3, r:12, FC:0.2,DN:3.0,CT:1.5,SV:2.0,IM:5.5,descanso:60},
+      {nome:'Rosca Direta',    kg:20,  s:3, r:12, FC:0.3,DN:3.5,CT:2.0,SV:2.0,IM:4.5,descanso:60},
+    ]
+  },
+  forca: {
+    wN:0.50, wM:0.35, wMet:0.15,
+    exs:[
+      {nome:'Agachamento Livre',    kg:100, s:5, r:5,  FC:1.2,DN:8.0,CT:6.0,SV:5.0,IM:9.0,descanso:180},
+      {nome:'Supino Reto',          kg:80,  s:5, r:5,  FC:0.7,DN:5.0,CT:4.0,SV:3.0,IM:7.5,descanso:180},
+      {nome:'Terra / RDL',          kg:110, s:4, r:4,  FC:1.1,DN:8.5,CT:7.0,SV:5.0,IM:9.5,descanso:180},
+      {nome:'Desenvolvimento Barra',kg:50,  s:4, r:5,  FC:0.9,DN:6.0,CT:5.0,SV:3.5,IM:6.5,descanso:120},
+    ]
+  },
+  recomp: {
+    wN:0.20, wM:0.25, wMet:0.55,
+    exs:[
+      {nome:'Agachamento Goblet',   kg:20,  s:3, r:15, FC:0.8,DN:5.5,CT:3.5,SV:4.0,IM:6.5,descanso:60},
+      {nome:'Supino c/ Halteres',   kg:14,  s:3, r:12, FC:0.6,DN:4.0,CT:3.0,SV:3.0,IM:6.0,descanso:60},
+      {nome:'Remada Unilateral',    kg:18,  s:3, r:12, FC:0.7,DN:4.5,CT:3.0,SV:3.0,IM:6.0,descanso:60},
+      {nome:'Cadeira Extensora',    kg:35,  s:3, r:15, FC:0.2,DN:3.0,CT:1.5,SV:2.0,IM:5.5,descanso:45},
+      {nome:'Elevação Lateral',     kg:6,   s:3, r:15, FC:0.3,DN:3.0,CT:2.0,SV:2.5,IM:4.0,descanso:45},
+    ]
+  },
+  funcional: {
+    wN:0.25, wM:0.25, wMet:0.50,
+    exs:[
+      {nome:'Agachamento c/ Peso',  kg:0,   s:3, r:15, FC:0.8,DN:4.5,CT:3.0,SV:4.0,IM:5.5,descanso:60},
+      {nome:'Flexão de Braços',     kg:0,   s:3, r:12, FC:0.6,DN:4.0,CT:3.5,SV:4.0,IM:5.0,descanso:60},
+      {nome:'Remada c/ Elástico',   kg:10,  s:3, r:15, FC:0.5,DN:3.5,CT:2.5,SV:3.5,IM:4.5,descanso:60},
+      {nome:'Afundo',               kg:10,  s:3, r:10, FC:0.9,DN:5.0,CT:4.0,SV:4.0,IM:6.5,descanso:60},
+    ]
+  },
+  reab: {
+    wN:0.15, wM:0.25, wMet:0.60,
+    exs:[
+      {nome:'Cadeira Extensora',    kg:20,  s:3, r:15, FC:0.2,DN:2.5,CT:1.0,SV:1.0,IM:4.5,descanso:90},
+      {nome:'Leg Press (leve)',     kg:40,  s:3, r:15, FC:0.4,DN:3.5,CT:2.0,SV:2.0,IM:5.5,descanso:90},
+      {nome:'Remada Sentado',       kg:15,  s:3, r:15, FC:0.5,DN:3.5,CT:2.0,SV:2.0,IM:5.0,descanso:90},
+      {nome:'Rosca Martelo (leve)', kg:6,   s:2, r:15, FC:0.3,DN:2.5,CT:1.5,SV:1.5,IM:3.5,descanso:75},
+    ]
+  },
+};
+
+// Fatores de ajuste por PSE (1–10)
+// PSE aqui = disponibilidade/desempenho declarado antes do treino
+const SIM_FACTORS = {
+  10: {carga:1.00, volume:1.00, descanso:1.00, pse_esp:8.5, label:'Pico · sessão completa e intensa',         cor:'var(--moss2)'},
+  9:  {carga:0.97, volume:1.00, descanso:1.00, pse_esp:8.0, label:'Excelente · acima da média',               cor:'var(--moss2)'},
+  8:  {carga:0.92, volume:0.95, descanso:1.05, pse_esp:7.5, label:'Bom · dentro do prescrito',                cor:'var(--gold)'},
+  7:  {carga:0.85, volume:0.88, descanso:1.10, pse_esp:7.0, label:'Regular · pequena redução de volume',      cor:'var(--gold)'},
+  6:  {carga:0.75, volume:0.80, descanso:1.15, pse_esp:6.0, label:'Abaixo do esperado · sessão moderada',     cor:'var(--copper2)'},
+  5:  {carga:0.65, volume:0.70, descanso:1.25, pse_esp:5.0, label:'Cansado · sessão leve',                    cor:'var(--copper2)'},
+  4:  {carga:0.52, volume:0.58, descanso:1.40, pse_esp:4.0, label:'Muito cansado · volume mínimo',            cor:'var(--danger2)'},
+  3:  {carga:0.40, volume:0.45, descanso:1.60, pse_esp:3.5, label:'Overreaching · sessão de ativação',        cor:'var(--danger2)'},
+  2:  {carga:0.28, volume:0.30, descanso:1.80, pse_esp:3.0, label:'Fadiga aguda · mobilidade apenas',         cor:'var(--danger2)'},
+  1:  {carga:0.00, volume:0.00, descanso:2.00, pse_esp:2.0, label:'⚠ Repouso recomendado — não treinar hoje', cor:'var(--danger2)'},
+};
+
+function calcNeuralEx(ex, kg, r, s) {
+  const cn = kg * r * s;
+  const amp = 1 + ex.CT * 0.05; // explos=0 por default no simulador
+  return cn * ex.FC * ex.DN * amp;
+}
+function calcMecEx(ex, kg, r, s) {
+  return kg * r * s * ex.IM;
+}
+function calcMetEx(ex, kg, r, s, descanso) {
+  const cn = kg * r * s;
+  const FTT = 1; // cadência não prescrita → FTT=1 (modelo matemático §2c)
+  const FD = 90 / descanso;
+  return cn * FTT * ex.SV * FD;
+}
+
+function simulateSession(pse) {
+  const s = getActiveStudent();
+  if (!s) return null;
+  const profile = SIM_PROFILES[s.profile] || SIM_PROFILES['hiper'];
+  const f = SIM_FACTORS[pse];
+
+  let neural_total = 0, mec_total = 0, met_total = 0;
+  let neural_base = 0, mec_base = 0, met_base = 0;
+
+  const exsBase = profile.exs.map(ex => {
+    const nb = calcNeuralEx(ex, ex.kg, ex.r, ex.s);
+    const mb = calcMecEx(ex, ex.kg, ex.r, ex.s);
+    const mtb = calcMetEx(ex, ex.kg, ex.r, ex.s, ex.descanso);
+    neural_base += nb; mec_base += mb; met_base += mtb;
+    return { ...ex, nb, mb, mtb };
+  });
+
+  const exsSim = exsBase.map(ex => {
+    const kg_sim  = Math.round(ex.kg * f.carga / 2.5) * 2.5;
+    const r_sim   = Math.max(1, Math.round(ex.r * f.volume));
+    const desc_sim = Math.round(ex.descanso * f.descanso);
+    const pse_ex  = Math.min(10, +(f.pse_esp + (Math.random() * 0.8 - 0.4)).toFixed(1));
+    const n = calcNeuralEx(ex, kg_sim, r_sim, ex.s);
+    const m = calcMecEx(ex, kg_sim, r_sim, ex.s);
+    const mt = calcMetEx(ex, kg_sim, r_sim, ex.s, desc_sim);
+    neural_total += n; mec_total += m; met_total += mt;
+    return { ...ex, kg_sim, r_sim, s_sim: ex.s, desc_sim, pse_ex, n, m, mt };
+  });
+
+  const { wN, wM, wMet } = profile;
+  const ic_base = (wN * neural_base) + (wM * mec_base) + (wMet * met_base);
+  const ic_sim  = (wN * neural_total) + (wM * mec_total) + (wMet * met_total);
+  const duração = 45 + (pse >= 8 ? 15 : pse >= 6 ? 5 : 0);
+  const carga_interna = f.pse_esp * duração;
+  const ratio = ic_sim / carga_interna;
+
+  return {
+    student: s,
+    pse,
+    factor: f,
+    exsSim,
+    ic_base,
+    ic_sim,
+    neural: neural_total,
+    mec: mec_total,
+    met: met_total,
+    neural_base,
+    mec_base,
+    met_base,
+    carga_interna,
+    ratio,
+    duração,
+    wN, wM, wMet
+  };
+}
+
+function calcChips(sim) {
+  if (!sim) return [];
+  const chips = [];
+  const { exsSim, pse, factor, student } = sim;
+  const sessoes = (STATE.sessions[student.id] || []).filter(s => !s.simulado);
+
+  // ── CHIPS EXISTENTES (RN 26) ──────────────────────
+
+  // progressão_ok
+  if (factor.volume >= 0.95 && factor.pse_esp >= 7.5) {
+    chips.push({c:'ok', t:'✓ progressão_ok — candidato a aumento de carga'});
+  }
+  // sessão no limite
+  if (pse >= 9 && factor.pse_esp >= 8.5) {
+    chips.push({c:'warn', t:`⚠ sessão no limite — PSE esperada ${factor.pse_esp.toFixed(1)}, monitorar execução`});
+  }
+  // fadiga
+  if (pse <= 5 && pse > 1) {
+    chips.push({c:'warn', t:'⚠ fadiga — volume e carga reduzidos automaticamente'});
+  }
+  // repouso
+  if (pse <= 1) {
+    chips.push({c:'alert', t:'⚠ PSE crítico — sessão cancelada, repouso recomendado'});
+    return chips; // sem mais chips se não vai treinar
+  }
+  // overreaching
+  if (pse <= 3) {
+    chips.push({c:'alert', t:'⚠ sinal de overreaching — avaliar deload'});
+  }
+
+  // ── CHIPS NOVOS (dependem de histórico no banco) ──
+
+  // pse_ic_divergência: PSE esperada alta com IC simulado abaixo da média histórica -15%
+  if (sessoes.length >= 3) {
+    const mediaIC = sessoes.slice(0, 8).reduce((s, ss) => s + (ss.indice || ss.indice_carga || 0), 0) /
+                    Math.min(sessoes.length, 8);
+    if (factor.pse_esp >= 7.5 && sim.ic_sim < mediaIC * 0.85) {
+      chips.push({c:'alert',
+        t:`⚠ pse_ic_divergência — esforço esperado alto (${factor.pse_esp}) com IC ${Math.round((sim.ic_sim/mediaIC-1)*100)}% abaixo da média`});
+    }
+  }
+
+  // delta_pse_crescente: PSE relatada subindo nas últimas 3 sessões consecutivas
+  // = fadiga acumulada silenciosa que o IC não captura
+  if (sessoes.length >= 3) {
+    const ultimas = sessoes.slice(0, 3).map(s => s.pse || 0);
+    const crescente = ultimas[0] > ultimas[1] && ultimas[1] > ultimas[2];
+    if (crescente && ultimas[0] >= 7.5) {
+      chips.push({c:'warn',
+        t:`⚠ delta_pse_crescente — PSE subindo nas últimas 3 sessões (${ultimas[2].toFixed(1)}→${ultimas[1].toFixed(1)}→${ultimas[0].toFixed(1)}) · fadiga acumulada`});
+    }
+  }
+
+  // ritmo_em_queda: RatioAdaptação caindo em 2 semanas consecutivas
+  // Proxy: IC médio das últimas 4 sessões vs 4 anteriores, controlado por PSE
+  if (sessoes.length >= 6) {
+    const bloco1 = sessoes.slice(0, 4); // mais recentes
+    const bloco2 = sessoes.slice(4, 8); // anteriores
+    if (bloco2.length >= 2) {
+      const ritmo = ss => ss.reduce((s, x) => s + (x.indice || x.indice_carga || 0) / Math.max(x.pse || 7, 1), 0) / ss.length;
+      const r1 = ritmo(bloco1);
+      const r2 = ritmo(bloco2);
+      const delta = (r1 - r2) / r2;
+      if (delta <= -0.10) {
+        chips.push({c:'alert',
+          t:`⚠ ritmo_em_queda — IC÷PSE caiu ${Math.round(Math.abs(delta)*100)}% nas últimas semanas · considerar deload`});
+      } else if (delta <= -0.05) {
+        chips.push({c:'warn',
+          t:`⚠ ritmo_em_queda leve — IC÷PSE −${Math.round(Math.abs(delta)*100)}% · monitorar próximas sessões`});
+      }
+    }
+  }
+
+  return chips;
+}
+
+function pseColor2(v) {
+  if (v >= 9)  return '#b84030';
+  if (v >= 8)  return '#a07040';
+  if (v >= 7)  return '#8a6030';
+  if (v >= 5)  return '#c8a060';
+  return '#6aa050';
+}
+function fmtNum(n) { return Number.isInteger(n) ? n : n.toFixed(0); }
+
+let _lastSim = null;
+
+function updateSim(pse) {
+  document.getElementById('sim-pse-num').textContent = pse;
+  const f = SIM_FACTORS[pse];
+  document.getElementById('sim-pse-label').textContent = f.label;
+  document.getElementById('sim-pse-label').style.color = f.cor;
+
+  const sim = simulateSession(pse);
+  _lastSim = sim;
+  if (!sim) return;
+
+  const deltaPct = (v, base) => {
+    const d = ((v - base) / base * 100);
+    const sign = d > 0 ? '+' : '';
+    const cls = d < -5 ? 'neg' : d > 5 ? 'pos' : 'neu';
+    return `<div class="sim-card-delta ${cls}">${sign}${d.toFixed(0)}% vs prescrito</div>`;
+  };
+
+  document.getElementById('sim-metrics').innerHTML = `
+    <div class="sim-card">
+      <div class="sim-card-lbl">CargaObjetiva</div>
+      <div class="sim-card-val" style="color:${f.cor}">${fmtNum(sim.ic_sim)}</div>
+      <div class="sim-card-unit">índice</div>
+      ${deltaPct(sim.ic_sim, sim.ic_base)}
+    </div>
+    <div class="sim-card">
+      <div class="sim-card-lbl">PSE esperada</div>
+      <div class="sim-card-val" style="color:${pseColor2(f.pse_esp)}">${f.pse_esp.toFixed(1)}</div>
+      <div class="sim-card-unit">pós-sessão</div>
+    </div>
+    <div class="sim-card">
+      <div class="sim-card-lbl">Volume</div>
+      <div class="sim-card-val">${Math.round(f.volume*100)}<span style="font-size:14px">%</span></div>
+      <div class="sim-card-unit">do prescrito</div>
+    </div>
+    <div class="sim-card">
+      <div class="sim-card-lbl">Descanso</div>
+      <div class="sim-card-val">${f.descanso >= 1.5 ? '↑↑' : f.descanso >= 1.1 ? '↑' : '='}</div>
+      <div class="sim-card-unit">${Math.round(f.descanso*100-100)}% a mais</div>
+    </div>
+  `;
+
+  // dimensões
+  const maxDim = Math.max(sim.neural, sim.mec, sim.met, 1);
+  document.getElementById('sim-dims-rows').innerHTML = [
+    ['Neural',     sim.neural,  sim.neural_base,  'var(--slate2)'],
+    ['Mecânica',   sim.mec,     sim.mec_base,     'var(--copper)'],
+    ['Metabólica', sim.met,     sim.met_base,     'var(--moss2)'],
+  ].map(([lbl, v, vb, cor]) => `
+    <div class="sim-dim-row">
+      <div class="sim-dim-lbl">${lbl}</div>
+      <div class="sim-dim-track">
+        <div class="sim-dim-fill" style="width:${v/maxDim*100}%;background:${cor}"></div>
+      </div>
+      <div class="sim-dim-num">${fmtNum(v)}</div>
+    </div>
+  `).join('');
+
+  // chips
+  const chips = calcChips(sim);
+  document.getElementById('sim-chips-wrap').innerHTML = chips.length
+    ? `<div class="sim-chips">${chips.map(ch =>
+        `<span class="sim-chip sim-chip-${ch.c}">${ch.t}</span>`).join('')}</div>`
+    : '';
+
+  // exercícios
+  document.getElementById('sim-ex-list').innerHTML = sim.exsSim.map(ex => `
+    <div class="sim-ex">
+      <div class="sim-ex-name">${ex.nome}</div>
+      <div class="sim-ex-detail">${ex.s_sim}×${ex.r_sim} · ${ex.kg_sim > 0 ? ex.kg_sim+'kg' : 'corpo'} · ${ex.desc_sim}s</div>
+      <div class="sim-ex-pse" style="background:${pseColor2(ex.pse_ex)}22;color:${pseColor2(ex.pse_ex)};border:1px solid ${pseColor2(ex.pse_ex)}44">
+        ${ex.pse_ex.toFixed(1)}
+      </div>
+    </div>
+  `).join('');
+}
+
+function openSim() {
+  const s = getActiveStudent();
+  const label = document.getElementById('sim-student-label');
+  label.textContent = s ? `${s.name} · ${s.mesociclo}` : 'selecione um aluno primeiro';
+  document.getElementById('sim-save-btn').disabled = !s;
+  document.getElementById('sim-overlay').classList.add('open');
+  if (s) updateSim(+document.getElementById('sim-pse-range').value);
+}
+
+function closeSim(e) {
+  if (!e || e.target === document.getElementById('sim-overlay')) {
+    document.getElementById('sim-overlay').classList.remove('open');
+  }
+}
+
+async function saveSimSession() {
+  const sim = _lastSim;
+  if (!sim) return;
+  const btn = document.getElementById('sim-save-btn');
+  btn.disabled = true;
+  btn.textContent = 'Salvando…';
+  try {
+    await db.collection('sessions').add({
+      student_id: sim.student.id,
+      simulado: true,
+      pse_input: sim.pse,
+      pse: sim.factor.pse_esp,
+      indice: Math.round(sim.ic_sim),
+      carga_interna: Math.round(sim.carga_interna),
+      ratio_adaptacao: +sim.ratio.toFixed(3),
+      neural: Math.round(sim.neural),
+      mecanica: Math.round(sim.mec),
+      metabolica: Math.round(sim.met),
+      tipo: `Simulação PSE ${sim.pse}`,
+      data: new Date().toLocaleDateString('pt-BR'),
+      timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+      exercicios: sim.exsSim.map(ex => ({
+        nome: ex.nome,
+        s: ex.s_sim,
+        r: ex.r_sim,
+        kg: ex.kg_sim,
+        pse: +ex.pse_ex.toFixed(1),
+      }))
+    });
+    btn.textContent = '✓ Sessão salva!';
+    setTimeout(() => {
+      btn.textContent = '↓ Salvar como sessão simulada no banco';
+      btn.disabled = false;
+      closeSim();
+    }, 1800);
+  } catch(e) {
+    btn.textContent = '⚠ Erro — tente novamente';
+    btn.disabled = false;
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// PRESCRIÇÃO — ENGINE
+// ═══════════════════════════════════════════════════
+
+// ── Banco de exercícios (carregado do JSON) ──────────
+let EX_DB = [];         // array de exercícios
+let EX_CAT_FILTER = 'Todos';
+let EX_QUERY = '';
+
+// ── Estado da prescrição ─────────────────────────────
+let PRESC = {
+  mode: 'rapido',       // 'rapido' | 'meso'
+  items: [],            // exercícios adicionados
+  analysisOpen: false,
+  dragSrcUid: null,
+};
+
+// ── Pré-sets por objetivo ────────────────────────────
+const OBJETIVO_PRESETS = {
+  'Hipertrofia': {
+    color: '#a07840',
+    series: 3, reps: 10, pse_alvo: 7,
+    zona: 'moderado', descanso: 90,
+    var_mae: 'volume', var_sec: 'carga',
+    progressao: 'linear',
+    label: '3×10 · PSE 7 · 90s',
+  },
+  'Força': {
+    color: '#8a6030',
+    series: 4, reps: 5, pse_alvo: 8,
+    zona: 'pesado', descanso: 180,
+    var_mae: 'carga', var_sec: 'volume',
+    progressao: 'linear',
+    label: '4×5 · PSE 8 · 3min',
+  },
+  'Técnica': {
+    color: '#3a6878',
+    series: 4, reps: 6, pse_alvo: 6,
+    zona: 'leve', descanso: 120,
+    var_mae: 'carga', var_sec: 'volume',
+    progressao: 'linear',
+    label: '4×6 · PSE 6 · 2min',
+  },
+  'Metabólico': {
+    color: '#4a6832',
+    series: 3, reps: 15, pse_alvo: 7,
+    zona: 'moderado', descanso: 45,
+    var_mae: 'densidade', var_sec: 'volume',
+    progressao: 'linear',
+    label: '3×15 · PSE 7 · 45s',
+  },
+  'Potência': {
+    color: '#6a3020',
+    series: 5, reps: 3, pse_alvo: 8,
+    zona: 'pesado', descanso: 150,
+    var_mae: 'carga', var_sec: 'volume',
+    progressao: 'block',
+    label: '5×3 · PSE 8 · 2.5min',
+  },
+};
+
+const ZONAS = [
+  { id:'leve',    label:'Leve',    pct:'50–65% 1RM', color:'#4a6832' },
+  { id:'moderado',label:'Mod.',    pct:'65–75% 1RM', color:'#a07040' },
+  { id:'pesado',  label:'Pesado',  pct:'75–85% 1RM', color:'#8a6030' },
+  { id:'maximo',  label:'Máx.',    pct:'85–100% 1RM',color:'#6a3020' },
+];
+
+const MODELOS_PROG = [
+  { id:'linear',   label:'Linear' },
+  { id:'ondulatorio', label:'Ondulatório' },
+  { id:'block',    label:'Block' },
+  { id:'dup',      label:'DUP' },
+];
+
+// ── Validação fisiológica (do v3) ────────────────────
+const MONO_IDS = ['extensora','flexora_d','flexora_p','adutora','abdutora',
+  'peck','crucifixo','rosca','rosca_m','rosca_scott','rosca_conc',
+  'triceps_p','triceps_f','triceps_coice','elev_lat','elev_post','gluteo4',
+  'pant_pe','pant_sentado','crossover','straight_arm','elev_frontal',
+  'face_pull','encolh_trap','pullover','crunch_cabo','tricep_banco'];
+
+function validateObjExercicio(ex, objetivo) {
+  const CT = ex.CT || 0;
+  const SV = ex.SV || 0;
+  const isMono = MONO_IDS.includes(ex.id) ||
+    ex.categoria?.includes('isolamento') ||
+    ex.categoria?.includes('core');
+
+  if (objetivo === 'Força' && isMono)
+    return { status:'locked', msg:`Isolamento não suporta Força Máxima — fator limitante é a articulação, não o SNC.` };
+  if (objetivo === 'Potência' && isMono)
+    return { status:'locked', msg:`Isolamento não tem estrutura biomecânica para expressar potência transferível.` };
+  if (objetivo === 'Força' && CT < 3)
+    return { status:'warn', msg:`CT ${CT} — complexidade técnica baixa para carga máxima. Confirmar?` };
+  if (objetivo === 'Potência' && SV < 4)
+    return { status:'warn', msg:`SV ${SV} — potencial explosivo baixo para este exercício.` };
+  return { status:'ok' };
+}
+
+// ── Carrega exercícios do Firestore ou fallback local ─
+async function loadExercisesDB() {
+  try {
+    const snap = await db.collection('exercises').get();
+    if (!snap.empty) {
+      EX_DB = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    }
+  } catch(e) {
+    // Firebase não tem exercícios — usa banco embutido mínimo
+    EX_DB = [];
+  }
+  renderExBank();
+}
+
+// ── Categorias únicas ────────────────────────────────
+function getExCats() {
+  const cats = ['Todos'];
+  const seen = new Set();
+  const CAT_LABELS = {
+    'composto_bilateral': 'Compostos',
+    'composto_guiado': 'Guiados',
+    'composto_unilateral': 'Unilateral',
+    'articulacao_dupla': 'Dobradiça',
+    'empurrada_horizontal': 'Push H',
+    'empurrada_vertical': 'Push V',
+    'puxada_vertical': 'Pull V',
+    'puxada_horizontal': 'Pull H',
+    'isolamento_superior': 'Iso Sup',
+    'isolamento_inferior': 'Iso Inf',
+    'core_isometrico': 'Core',
+    'core_dinamico': 'Core',
+    'core_antirotacao': 'Core',
+    'olimpico': 'Olímpico',
+    'potencia_explosivo': 'Potência',
+    'potencia_salto': 'Salto',
+    'carry_locomocao': 'Carry',
+  };
+  EX_DB.forEach(ex => {
+    const lbl = CAT_LABELS[ex.categoria] || ex.categoria || 'Outros';
+    if (!seen.has(lbl)) { seen.add(lbl); cats.push(lbl); }
+  });
+  return cats;
+}
+
+function renderExBank() {
+  if (!EX_DB.length) {
+    document.getElementById('ex-list').innerHTML =
+      `<div style="padding:20px;text-align:center;font-size:8px;color:var(--ink3)">
+        Banco de exercícios não encontrado no Firestore.<br>
+        Popule a coleção <strong>exercises</strong> com o arquivo momentum-exercises.json.
+      </div>`;
+    document.getElementById('ex-cats').innerHTML = '';
+    return;
+  }
+
+  const CAT_LABELS = {
+    'composto_bilateral': 'Compostos','composto_guiado': 'Guiados',
+    'composto_unilateral': 'Unilateral','articulacao_dupla': 'Dobradiça',
+    'empurrada_horizontal': 'Push H','empurrada_vertical': 'Push V',
+    'puxada_vertical': 'Pull V','puxada_horizontal': 'Pull H',
+    'isolamento_superior': 'Iso Sup','isolamento_inferior': 'Iso Inf',
+    'core_isometrico': 'Core','core_dinamico': 'Core','core_antirotacao': 'Core',
+    'olimpico': 'Olímpico','potencia_explosivo': 'Potência',
+    'potencia_salto': 'Salto','carry_locomocao': 'Carry',
+  };
+
+  // Categorias
+  const cats = getExCats();
+  document.getElementById('ex-cats').innerHTML = cats.map(c =>
+    `<button class="ex-cat ${c === EX_CAT_FILTER ? 'active' : ''}"
+      onclick="setExCat('${c}')">${c}</button>`
+  ).join('');
+
+  // Exercícios filtrados
+  const q = EX_QUERY.toLowerCase();
+  const addedIds = new Set(PRESC.items.map(i => i.ex.id));
+  const filtered = EX_DB.filter(ex => {
+    const catMatch = EX_CAT_FILTER === 'Todos' ||
+      (CAT_LABELS[ex.categoria] || ex.categoria) === EX_CAT_FILTER;
+    const qMatch = !q || ex.name?.toLowerCase().includes(q) ||
+      ex.group?.toLowerCase().includes(q);
+    return catMatch && qMatch;
+  });
+
+  document.getElementById('ex-list').innerHTML = filtered.map(ex => `
+    <div class="ex-item ${addedIds.has(ex.id) ? 'added' : ''}"
+      onclick="addExToPresc('${ex.id}')">
+      <div class="ex-item-ico">${ex.icon || '🏋️'}</div>
+      <div class="ex-item-info">
+        <div class="ex-item-name">${ex.name}</div>
+        <div class="ex-item-meta">${ex.group || ''}</div>
+      </div>
+      <div class="ex-item-add">+</div>
+    </div>`).join('');
+}
+
+function setExCat(cat) {
+  EX_CAT_FILTER = cat;
+  renderExBank();
+}
+
+function filterExercises(q) {
+  EX_QUERY = q;
+  renderExBank();
+}
+
+// ── Adiciona exercício ao build ──────────────────────
+function addExToPresc(exId) {
+  if (PRESC.items.find(i => i.ex.id === exId)) return;
+  const ex = EX_DB.find(e => e.id === exId);
+  if (!ex) return;
+
+  // Pré-set padrão: Hipertrofia (ajustado por valência do exercício)
+  const defaultObj = ex.valences?.includes('Força') ? 'Força' :
+                     ex.valences?.includes('Potência') ? 'Potência' : 'Hipertrofia';
+  const preset = OBJETIVO_PRESETS[defaultObj];
+
+  PRESC.items.push({
+    uid: `ex_${Date.now()}_${Math.random().toString(36).slice(2,6)}`,
+    ex,
+    objetivo: defaultObj,
+    series: preset.series,
+    reps: preset.reps,
+    kg: 0,
+    pse_alvo: preset.pse_alvo,
+    zona: preset.zona,
+    descanso: preset.descanso,
+    progressao: preset.progressao,
+    var_mae: preset.var_mae,
+    advOpen: false,
+  });
+
+  renderBuildArea();
+  renderAnalysisPanel();
+  renderExBank();
+
+  // Habilita botões de salvar
+  document.getElementById('presc-save-btn').disabled = false;
+}
+
+// ── Remove exercício ─────────────────────────────────
+function removeFromPresc(uid) {
+  PRESC.items = PRESC.items.filter(i => i.uid !== uid);
+  renderBuildArea();
+  renderAnalysisPanel();
+  renderExBank();
+  document.getElementById('presc-save-btn').disabled = PRESC.items.length === 0;
+}
+
+// ── Seleciona objetivo do exercício ─────────────────
+function setExObjetivo(uid, objetivo) {
+  const item = PRESC.items.find(i => i.uid === uid);
+  if (!item) return;
+
+  const val = validateObjExercicio(item.ex, objetivo);
+  if (val.status === 'locked') {
+    // Mostra validação mas não aplica
+    item._validationMsg = val.msg;
+    item._validationStatus = 'locked';
+    renderBuildArea();
+    return;
+  }
+
+  const preset = OBJETIVO_PRESETS[objetivo];
+  item.objetivo   = objetivo;
+  item.series     = preset.series;
+  item.reps       = preset.reps;
+  item.pse_alvo   = preset.pse_alvo;
+  item.zona       = preset.zona;
+  item.descanso   = preset.descanso;
+  item.progressao = preset.progressao;
+  item.var_mae    = preset.var_mae;
+  item._validationMsg    = val.status === 'warn' ? val.msg : null;
+  item._validationStatus = val.status;
+
+  renderBuildArea();
+  renderAnalysisPanel();
+}
+
+// ── Toggle modo avançado ─────────────────────────────
+function toggleAdvanced(uid) {
+  const item = PRESC.items.find(i => i.uid === uid);
+  if (item) { item.advOpen = !item.advOpen; renderBuildArea(); }
+}
+
+// ── Atualiza campo do exercício ──────────────────────
+function updateExField(uid, field, value) {
+  const item = PRESC.items.find(i => i.uid === uid);
+  if (!item) return;
+  item[field] = isNaN(+value) ? value : +value;
+  renderAnalysisPanel();
+}
+
+function setExZona(uid, zona) {
+  const item = PRESC.items.find(i => i.uid === uid);
+  if (item) { item.zona = zona; renderBuildArea(); renderAnalysisPanel(); }
+}
+
+// ── Render: build area ───────────────────────────────
+function renderBuildArea() {
+  const area = document.getElementById('build-area');
+  const empty = document.getElementById('build-empty');
+
+  if (!PRESC.items.length) {
+    empty.style.display = 'block';
+    // Remove cards antigos
+    area.querySelectorAll('.pex-card').forEach(c => c.remove());
+    return;
+  }
+  empty.style.display = 'none';
+
+  // Reconstrói todos os cards
+  area.querySelectorAll('.pex-card').forEach(c => c.remove());
+
+  PRESC.items.forEach(item => {
+    const card = buildExCard(item);
+    area.appendChild(card);
+  });
+}
+
+function buildExCard(item) {
+  const preset = OBJETIVO_PRESETS[item.objetivo] || OBJETIVO_PRESETS['Hipertrofia'];
+  const card = document.createElement('div');
+  card.className = 'pex-card';
+  card.id = `pex-${item.uid}`;
+  card.draggable = true;
+
+  card.addEventListener('dragstart', e => {
+    PRESC.dragSrcUid = item.uid;
+    card.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+  });
+  card.addEventListener('dragend', () => card.classList.remove('dragging'));
+  card.addEventListener('dragover', e => { e.preventDefault(); card.classList.add('drag-over'); });
+  card.addEventListener('dragleave', () => card.classList.remove('drag-over'));
+  card.addEventListener('drop', e => {
+    e.preventDefault(); card.classList.remove('drag-over');
+    if (PRESC.dragSrcUid && PRESC.dragSrcUid !== item.uid) {
+      const srcIdx = PRESC.items.findIndex(i => i.uid === PRESC.dragSrcUid);
+      const dstIdx = PRESC.items.findIndex(i => i.uid === item.uid);
+      if (srcIdx > -1 && dstIdx > -1) {
+        const [mv] = PRESC.items.splice(srcIdx, 1);
+        PRESC.items.splice(dstIdx, 0, mv);
+        renderBuildArea();
+        renderAnalysisPanel();
+      }
+    }
+    PRESC.dragSrcUid = null;
+  });
+
+  const objPills = Object.keys(OBJETIVO_PRESETS).map(obj => {
+    const val = validateObjExercicio(item.ex, obj);
+    const isActive = obj === item.objetivo;
+    const isLocked = val.status === 'locked';
+    const col = OBJETIVO_PRESETS[obj].color;
+    return `<button class="pex-obj ${isActive ? 'active' : ''} ${isLocked ? 'disabled' : ''}"
+      style="${isActive ? `background:${col}99;border-color:${col};` : ''}"
+      ${isLocked ? 'disabled title="Valência bloqueada para este exercício"' : ''}
+      onclick="setExObjetivo('${item.uid}','${obj}')">${obj}</button>`;
+  }).join('');
+
+  const zonaHTML = ZONAS.map(z =>
+    `<div class="pex-zone ${item.zona === z.id ? 'active' : ''}"
+      style="${item.zona === z.id ? `background:${z.color};` : ''}"
+      onclick="setExZona('${item.uid}','${z.id}')"
+      title="${z.pct}">${z.label}</div>`
+  ).join('');
+
+  const progHTML = MODELOS_PROG.map(p =>
+    `<option value="${p.id}" ${item.progressao === p.id ? 'selected' : ''}>${p.label}</option>`
+  ).join('');
+
+  const validation = item._validationMsg ? `
+    <div class="pex-validation ${item._validationStatus}">
+      ${item._validationMsg}
+    </div>` : '';
+
+  card.innerHTML = `
+    <div class="pex-head">
+      <div class="pex-drag">⠿</div>
+      <div class="pex-ico">${item.ex.icon || '🏋️'}</div>
+      <div>
+        <div class="pex-name">${item.ex.name}</div>
+        <div class="pex-cat">${item.ex.categoria || item.ex.group || ''}</div>
+      </div>
+      <button class="pex-adv-toggle ${item.advOpen ? 'active' : ''}"
+        onclick="toggleAdvanced('${item.uid}')">
+        ${item.advOpen ? 'simples' : 'avançado'}
+      </button>
+      <button class="pex-rm" onclick="removeFromPresc('${item.uid}')">×</button>
+    </div>
+
+    <div class="pex-quick">
+      <div class="pex-quick-lbl">Objetivo</div>
+      <div class="pex-obj-pills">${objPills}</div>
+      <div class="pex-preset-spec">
+        <span>${item.series} séries</span>
+        <span>${item.reps} reps</span>
+        <span>PSE alvo <strong>${item.pse_alvo}</strong></span>
+        <span>${item.descanso}s descanso</span>
+      </div>
+      ${validation}
+    </div>
+
+    <div class="pex-advanced ${item.advOpen ? 'open' : ''}">
+      <div class="pex-ctrl-grid">
+        <div class="pex-ctrl">
+          <div class="pex-ctrl-lbl">Séries</div>
+          <input class="pex-ctrl-input" type="number" min="1" max="10"
+            value="${item.series}"
+            oninput="updateExField('${item.uid}','series',this.value)">
+        </div>
+        <div class="pex-ctrl">
+          <div class="pex-ctrl-lbl">Reps</div>
+          <input class="pex-ctrl-input" type="number" min="1" max="30"
+            value="${item.reps}"
+            oninput="updateExField('${item.uid}','reps',this.value)">
+        </div>
+        <div class="pex-ctrl">
+          <div class="pex-ctrl-lbl">Carga (kg)</div>
+          <input class="pex-ctrl-input" type="number" min="0" max="500"
+            value="${item.kg || ''}" placeholder="—"
+            oninput="updateExField('${item.uid}','kg',this.value)">
+        </div>
+        <div class="pex-ctrl">
+          <div class="pex-ctrl-lbl">PSE alvo</div>
+          <input class="pex-ctrl-input" type="number" min="1" max="10" step="0.5"
+            value="${item.pse_alvo}"
+            oninput="updateExField('${item.uid}','pse_alvo',this.value)">
+        </div>
+        <div class="pex-ctrl">
+          <div class="pex-ctrl-lbl">Descanso (s)</div>
+          <input class="pex-ctrl-input" type="number" min="20" max="600"
+            value="${item.descanso}"
+            oninput="updateExField('${item.uid}','descanso',this.value)">
+        </div>
+      </div>
+      <div style="font-size:7px;text-transform:uppercase;letter-spacing:.12em;color:var(--ink3);margin-bottom:5px">Zona de intensidade</div>
+      <div class="pex-zone-row">${zonaHTML}</div>
+      <div class="pex-prog-row">
+        <div class="pex-prog-lbl">Progressão</div>
+        <select class="pex-prog-select"
+          onchange="updateExField('${item.uid}','progressao',this.value)">${progHTML}</select>
+      </div>
+      <div class="pex-prog-row">
+        <div class="pex-prog-lbl">Var. mãe</div>
+        <select class="pex-prog-select"
+          onchange="updateExField('${item.uid}','var_mae',this.value)">
+          ${['volume','carga','densidade'].map(v =>
+            `<option value="${v}" ${item.var_mae === v ? 'selected' : ''}>${v}</option>`
+          ).join('')}
+        </select>
+      </div>
+    </div>`;
+
+  return card;
+}
+
+// ── Render: painel de análise ────────────────────────
+function renderAnalysisPanel() {
+  const panel = document.getElementById('an-panel');
+  if (!PRESC.items.length) {
+    panel.innerHTML = '<div class="an-empty">Adicione exercícios para ver a análise</div>';
+    return;
+  }
+
+  const s = getActiveStudent();
+
+  // Calcula IC simplificado por exercício
+  const itemsCalc = PRESC.items.map(item => {
+    const cn  = (item.kg || 20) * item.reps * item.series;
+    const neural = cn * (item.ex.FC || 0.5) * (item.ex.DN || 5) *
+                   (1 + (item.ex.CT||0)*0.05);
+    const mec    = cn * (item.ex.IM || 6);
+    const fd     = 90 / Math.max(item.descanso, 10);
+    const met    = cn * 1 * (item.ex.SV || 3) * fd;
+    // pesos do aluno ou padrão
+    const wN = 0.30, wM = 0.40, wMet = 0.30;
+    const ic = wN * neural + wM * mec + wMet * met;
+    return { ...item, ic: Math.round(ic), neural, mec, met };
+  });
+
+  const totalIC  = itemsCalc.reduce((s,x) => s + x.ic, 0);
+  const totalN   = itemsCalc.reduce((s,x) => s + x.neural, 0);
+  const totalM   = itemsCalc.reduce((s,x) => s + x.mec, 0);
+  const totalMet = itemsCalc.reduce((s,x) => s + x.met, 0);
+  const soma = totalN + totalM + totalMet || 1;
+
+  // Referência histórica
+  const sessoes = s ? (STATE.sessions[s.id] || []) : [];
+  const icMedio = sessoes.length
+    ? sessoes.slice(0,8).reduce((a,b) => a + (b.indice||b.indice_carga||0), 0) / Math.min(sessoes.length,8)
+    : 0;
+  const icPct = icMedio ? Math.min((totalIC / icMedio) * 100, 200) : 50;
+  const icContextColor = icPct > 120 ? 'var(--danger2)' : icPct > 90 ? 'var(--moss2)' : 'var(--gold)';
+
+  panel.innerHTML = `
+    <!-- IC Total -->
+    <div class="an-section">
+      <div class="an-section-lbl">Índice de Carga estimado</div>
+      <div class="an-ic-display">
+        <div class="an-ic-val">${totalIC.toLocaleString('pt-BR')}</div>
+        <div class="an-ic-lbl">IC · sessão prescrita</div>
+      </div>
+      ${icMedio ? `
+      <div class="an-ic-context">
+        <div class="an-ic-context-fill" style="width:${icPct}%;background:${icContextColor}"></div>
+      </div>
+      <div class="an-ic-zones">
+        <span>0</span>
+        <span>${Math.round(icMedio).toLocaleString('pt-BR')} média</span>
+        <span>${Math.round(icMedio*1.5).toLocaleString('pt-BR')}</span>
+      </div>` : ''}
+    </div>
+
+    <!-- Componentes N/M/Met -->
+    <div class="an-section">
+      <div class="an-section-lbl">Perfil dimensional</div>
+      ${[
+        ['Neural',    totalN,   'var(--slate2)'],
+        ['Mecânica',  totalM,   'var(--copper)'],
+        ['Metabólica',totalMet, 'var(--moss2)'],
+      ].map(([lbl,v,cor]) => `
+        <div class="an-dim-row">
+          <div class="an-dim-lbl" style="color:${cor}">${lbl}</div>
+          <div class="an-dim-track">
+            <div class="an-dim-fill" style="width:${(v/soma*100).toFixed(0)}%;background:${cor}"></div>
+          </div>
+          <div class="an-dim-val" style="color:${cor}">${(v/soma*100).toFixed(0)}%</div>
+        </div>`).join('')}
+    </div>
+
+    <!-- Exercícios resumo (mini) -->
+    <div class="an-section">
+      <div class="an-section-lbl">Por exercício</div>
+      ${itemsCalc.map(item => `
+        <div class="an-ex-mini">
+          <div class="an-ex-mini-name">${item.ex.name}</div>
+          <div style="font-size:7px;color:var(--ink3);margin:0 8px">${item.objetivo}</div>
+          <div class="an-ex-mini-ic">${item.ic.toLocaleString('pt-BR')}</div>
+        </div>`).join('')}
+    </div>
+
+    <!-- Músculos ativados -->
+    <div class="an-section">
+      <div class="an-section-lbl">Músculos ativados</div>
+      <div id="an-muscles"></div>
+    </div>
+
+    <!-- Projeção IC por semana -->
+    <div class="an-section" id="an-proj-ic">
+      <div class="an-section-lbl">Projeção de IC · mesociclo</div>
+      <div id="an-proj-ic-content"></div>
+    </div>
+
+    <!-- Projeção N/M/Met acumulado -->
+    <div class="an-section" id="an-proj-dim">
+      <div class="an-section-lbl">Perfil dimensional projetado</div>
+      <div id="an-proj-dim-content"></div>
+    </div>
+  `;
+
+  // Músculos
+  const muscleMap = {};
+  itemsCalc.forEach(item => {
+    (item.ex.muscles || []).forEach(m => {
+      muscleMap[m] = (muscleMap[m] || 0) + item.ic;
+    });
+  });
+  const maxMuscle = Math.max(...Object.values(muscleMap), 1);
+  document.getElementById('an-muscles').innerHTML =
+    Object.entries(muscleMap)
+      .sort((a,b) => b[1]-a[1])
+      .map(([m,v]) => `
+        <div class="an-dim-row">
+          <div class="an-dim-lbl" style="color:var(--ink2)">${m}</div>
+          <div class="an-dim-track">
+            <div class="an-dim-fill" style="width:${(v/maxMuscle*100).toFixed(0)}%;background:var(--copper2)"></div>
+          </div>
+        </div>`).join('');
+
+  // Projeções longitudinais
+  renderProjections(itemsCalc, s);
+}
+
+// ── Projeções longitudinais ──────────────────────────
+function renderProjections(itemsCalc, student) {
+  const s = student;
+  const semanas = s?.semanas_total || 8;
+  const sess = s ? (STATE.sessions[s.id] || []).filter(x => !x.simulado) : [];
+
+  // IC base da sessão atual
+  const icBase = itemsCalc.reduce((t, x) => t + x.ic, 0);
+
+  // Curva de IC por semana — progressão linear por volume
+  // Cada exercício tem var_mae: se volume → séries aumentam gradualmente
+  // Se carga → kg aumenta gradualmente
+  const projIC = Array.from({ length: semanas }, (_, wi) => {
+    const semana = wi + 1;
+    const fatorProgresso = 1 + (semana - 1) / (semanas - 1) * 0.35; // até +35% no pico
+
+    // Deload se a última semana ou penúltima (regra heurística)
+    const isDeload = semana === semanas || semana === Math.floor(semanas * 0.75);
+    const fator = isDeload ? fatorProgresso * 0.65 : fatorProgresso;
+
+    const icProj = itemsCalc.reduce((total, item) => {
+      const progressoItem = item.var_mae === 'volume'
+        ? { series: Math.round(item.series * fator), reps: item.reps, kg: item.kg || 20 }
+        : { series: item.series, reps: item.reps, kg: Math.round((item.kg || 20) * fator) };
+
+      const cn = progressoItem.kg * progressoItem.reps * progressoItem.series;
+      const neural = cn * (item.ex.FC||0.5) * (item.ex.DN||5) * (1+(item.ex.CT||0)*0.05);
+      const mec    = cn * (item.ex.IM||6);
+      const fd     = 90 / Math.max(item.descanso, 10);
+      const met    = cn * (item.ex.SV||3) * fd;
+      return total + 0.30*neural + 0.40*mec + 0.30*met;
+    }, 0);
+
+    return { semana, ic: Math.round(icProj), isDeload, fator };
+  });
+
+  // Projeção N/M/Met acumulado por semana
+  const projDim = projIC.map(({ semana, fator, isDeload }) => {
+    let N=0, M=0, Met=0;
+    itemsCalc.forEach(item => {
+      const f = isDeload ? fator : fator;
+      const cn = (item.kg||20) * item.reps * Math.round(item.series * f);
+      N   += cn * (item.ex.FC||0.5) * (item.ex.DN||5);
+      M   += cn * (item.ex.IM||6);
+      Met += cn * (item.ex.SV||3) * (90/Math.max(item.descanso,10));
+    });
+    const soma = N+M+Met||1;
+    return { semana, n: N/soma, m: M/soma, met: Met/soma, isDeload };
+  });
+
+  // ── SVG gráfico IC ───────────────────────────────
+  const W = 260, H = 80;
+  const PAD = { t:12, r:10, b:20, l:36 };
+  const cW = W - PAD.l - PAD.r, cH = H - PAD.t - PAD.b;
+  const ics = projIC.map(x => x.ic);
+  const loIC = Math.min(...ics) * 0.85, hiIC = Math.max(...ics) * 1.08;
+  const sx = i => PAD.l + (i/(semanas-1)) * cW;
+  const sy = v => PAD.t + cH - ((v-loIC)/(hiIC-loIC||1)) * cH;
+
+  // Área
+  const areaPath = `M${sx(0)},${H-PAD.b} ` +
+    projIC.map((p,i) => `L${sx(i)},${sy(p.ic)}`).join(' ') +
+    ` L${sx(semanas-1)},${H-PAD.b} Z`;
+
+  // Linha
+  const linePath = projIC.map((p,i) =>
+    `${i===0?'M':'L'}${sx(i)},${sy(p.ic)}`).join(' ');
+
+  // Pontos e labels
+  const dots = projIC.map((p,i) => {
+    const col = p.isDeload ? 'var(--slate2)' : 'var(--gold)';
+    return `<circle cx="${sx(i)}" cy="${sy(p.ic)}" r="${p.isDeload?2.5:3}"
+      fill="${col}" stroke="var(--bg2)" stroke-width="1.5"/>`;
+  }).join('');
+
+  const xlbls = projIC.map((p,i) =>
+    `<text x="${sx(i)}" y="${H-4}" text-anchor="middle"
+      font-size="6" fill="rgba(200,160,96,.35)"
+      font-family="IBM Plex Mono,monospace">S${p.semana}</text>`
+  ).join('');
+
+  const ylbls = [loIC, (loIC+hiIC)/2, hiIC].map(v =>
+    `<text x="${PAD.l-4}" y="${sy(v)+3}" text-anchor="end"
+      font-size="6" fill="rgba(200,160,96,.35)"
+      font-family="IBM Plex Mono,monospace">${Math.round(v/1000)}k</text>`
+  ).join('');
+
+  // Marcadores de deload
+  const deloadMarkers = projIC
+    .filter(p => p.isDeload)
+    .map(p => `<line x1="${sx(p.semana-1)}" y1="${PAD.t}"
+      x2="${sx(p.semana-1)}" y2="${H-PAD.b}"
+      stroke="var(--slate2)" stroke-width="1" stroke-dasharray="3,2" opacity=".5"/>`)
+    .join('');
+
+  // Linha histórica (média das últimas sessões como referência)
+  const icMedioHist = sess.length
+    ? sess.slice(0,8).reduce((a,b)=>a+(b.indice||b.indice_carga||0),0)/Math.min(sess.length,8)
+    : 0;
+  const histLine = icMedioHist
+    ? `<line x1="${PAD.l}" y1="${sy(icMedioHist)}"
+        x2="${W-PAD.r}" y2="${sy(icMedioHist)}"
+        stroke="var(--copper2)" stroke-width="1" stroke-dasharray="4,3" opacity=".5"/>
+       <text x="${W-PAD.r+2}" y="${sy(icMedioHist)+3}"
+        font-size="6" fill="var(--copper2)" opacity=".6"
+        font-family="IBM Plex Mono,monospace">hist</text>`
+    : '';
+
+  // Veredicto
+  const pico = Math.max(...ics);
+  const delta = ((pico - icBase) / icBase * 100).toFixed(0);
+  const semanasPico = projIC.find(p => p.ic === pico)?.semana;
+  const veredicto = `Volume progride de <strong>${Math.round(icBase/1000)}k</strong> para pico de <strong>${Math.round(pico/1000)}k IC</strong> na semana ${semanasPico} (+${delta}%). Deload nas semanas marcadas em azul.`;
+
+  document.getElementById('an-proj-ic-content').innerHTML = `
+    <div class="proj-chart-wrap">
+      <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">
+        <defs>
+          <linearGradient id="proj-grad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="rgba(200,160,96,.18)"/>
+            <stop offset="100%" stop-color="rgba(200,160,96,0)"/>
+          </linearGradient>
+        </defs>
+        <!-- Grid -->
+        ${[0,.5,1].map(t=>`<line x1="${PAD.l}" y1="${PAD.t+t*cH}"
+          x2="${W-PAD.r}" y2="${PAD.t+t*cH}"
+          stroke="rgba(200,160,96,.06)" stroke-width="1"/>`).join('')}
+        ${histLine}
+        ${deloadMarkers}
+        <path d="${areaPath}" fill="url(#proj-grad)"/>
+        <path d="${linePath}" fill="none" stroke="rgba(200,160,96,.85)"
+          stroke-width="1.8" stroke-linejoin="round"/>
+        ${dots}
+        ${xlbls}
+        ${ylbls}
+      </svg>
+    </div>
+    <div class="proj-legend">
+      <div class="proj-leg-item">
+        <div class="proj-leg-dot" style="background:var(--gold)"></div>IC projetado
+      </div>
+      <div class="proj-leg-item">
+        <div class="proj-leg-dot" style="background:var(--slate2)"></div>Deload
+      </div>
+      ${icMedioHist?`<div class="proj-leg-item">
+        <div class="proj-leg-dot" style="background:var(--copper2);height:1px;border-top:1px dashed var(--copper2)"></div>Média histórica
+      </div>`:''}
+    </div>
+    <div class="proj-verdict">${veredicto}</div>`;
+
+  // ── SVG gráfico N/M/Met ──────────────────────────
+  const H2 = 70;
+  const cH2 = H2 - PAD.t - PAD.b;
+  const allVals = projDim.flatMap(p => [p.n, p.m, p.met]);
+  const lo2 = Math.max(0, Math.min(...allVals) - 0.05);
+  const hi2 = Math.min(1, Math.max(...allVals) + 0.05);
+  const sy2 = v => PAD.t + cH2 - ((v-lo2)/(hi2-lo2||1)) * cH2;
+
+  const DIMS = [
+    { key:'n',   color:'var(--slate2)',  label:'Neural' },
+    { key:'m',   color:'var(--copper)',  label:'Mecânica' },
+    { key:'met', color:'var(--moss2)',   label:'Metabólica' },
+  ];
+
+  const dimLines = DIMS.map(d => {
+    const line = projDim.map((p,i) =>
+      `${i===0?'M':'L'}${sx(i)},${sy2(p[d.key])}`).join(' ');
+    const dots2 = projDim.map((p,i) =>
+      `<circle cx="${sx(i)}" cy="${sy2(p[d.key])}" r="2.2"
+        fill="${d.color}" stroke="var(--bg2)" stroke-width="1.2"/>`).join('');
+    return `<path d="${line}" fill="none" stroke="${d.color}"
+      stroke-width="1.5" stroke-linejoin="round" opacity=".85"/>
+      ${dots2}`;
+  }).join('');
+
+  const xlbls2 = projDim.map((p,i) =>
+    `<text x="${sx(i)}" y="${H2-4}" text-anchor="middle"
+      font-size="6" fill="rgba(200,160,96,.3)"
+      font-family="IBM Plex Mono,monospace">S${p.semana}</text>`
+  ).join('');
+
+  document.getElementById('an-proj-dim-content').innerHTML = `
+    <div class="proj-chart-wrap">
+      <svg viewBox="0 0 ${W} ${H2}" preserveAspectRatio="xMidYMid meet">
+        ${[0,.5,1].map(t=>`<line x1="${PAD.l}" y1="${PAD.t+t*cH2}"
+          x2="${W-PAD.r}" y2="${PAD.t+t*cH2}"
+          stroke="rgba(200,160,96,.06)" stroke-width="1"/>`).join('')}
+        ${deloadMarkers.replace(/y2="${H-PAD\.b}"/g, `y2="${H2-PAD.b}"`)}
+        ${dimLines}
+        ${xlbls2}
+      </svg>
+    </div>
+    <div class="proj-legend">
+      ${DIMS.map(d=>`<div class="proj-leg-item">
+        <div class="proj-leg-dot" style="background:${d.color}"></div>${d.label}
+      </div>`).join('')}
+    </div>`;
+}
+
+// ── Modos ────────────────────────────────────────────
+function setModeRapido() {
+  PRESC.mode = 'rapido';
+  document.getElementById('presc-mode-rapido').classList.add('active');
+  document.getElementById('presc-mode-meso').classList.remove('active');
+  document.getElementById('presc-save-btn').textContent = 'Salvar sessão prescrita';
+}
+
+function setModeMeso() {
+  PRESC.mode = 'meso';
+  document.getElementById('presc-mode-meso').classList.add('active');
+  document.getElementById('presc-mode-rapido').classList.remove('active');
+  document.getElementById('presc-save-btn').textContent = 'Salvar no mesociclo';
+}
+
+// ── Toggle análise (mobile) ──────────────────────────
+function toggleAnalysis() {
+  PRESC.analysisOpen = !PRESC.analysisOpen;
+  const panels = document.getElementById('presc-panels');
+  const btn    = document.getElementById('presc-toggle-an');
+  panels.classList.toggle('show-analysis', PRESC.analysisOpen);
+  btn.classList.toggle('active', PRESC.analysisOpen);
+  btn.textContent = PRESC.analysisOpen ? '◨' : '◧';
+}
+
+// ── Salvar sessão prescrita ──────────────────────────
+async function saveWorkout() {
+  const s = getActiveStudent();
+  if (!s || !PRESC.items.length) return;
+
+  const btn = document.getElementById('presc-save-btn');
+  btn.disabled = true;
+  btn.textContent = 'Salvando…';
+
+  // Calcula IC planejado completo
+  const wN = 0.30, wM = 0.40, wMet = 0.30;
+  let totalNeural = 0, totalMec = 0, totalMet = 0;
+
+  const exercicios = PRESC.items.map(item => {
+    const cn     = (item.kg || 20) * item.reps * item.series;
+    const neural = cn * (item.ex.FC||0.5) * (item.ex.DN||5) * (1+(item.ex.CT||0)*0.05);
+    const mec    = cn * (item.ex.IM||6);
+    const fd     = 90 / Math.max(item.descanso, 10);
+    const met    = cn * (item.ex.SV||3) * fd;
+    const ic_ex  = wN*neural + wM*mec + wMet*met;
+
+    totalNeural += neural;
+    totalMec    += mec;
+    totalMet    += met;
+
+    return {
+      nome:         item.ex.name,
+      exercise_id:  item.ex.id,
+      s:            item.series,
+      r:            item.reps,
+      kg:           item.kg || 0,
+      pse_alvo:     item.pse_alvo,
+      r_alvo:       item.reps,        // campo que habilita chips RN 26
+      zona:         item.zona,
+      descanso_s:   item.descanso,
+      progressao:   item.progressao,
+      var_mae:      item.var_mae,
+      objetivo:     item.objetivo,
+      ic:           Math.round(ic_ex),
+      ic_neural:    Math.round(neural),
+      ic_mecanica:  Math.round(mec),
+      ic_metabolica:Math.round(met),
+    };
+  });
+
+  const ic_planejado = Math.round(wN*totalNeural + wM*totalMec + wMet*totalMet);
+  const n_pct = totalNeural / (totalNeural+totalMec+totalMet||1);
+  const m_pct = totalMec    / (totalNeural+totalMec+totalMet||1);
+  const met_pct = totalMet  / (totalNeural+totalMec+totalMet||1);
+
+  // Nome da sessão
+  const labelEl = document.getElementById('presc-session-label');
+  const tipo = labelEl?.value?.trim() ||
+    `${PRESC.mode === 'meso' ? 'Prescrição Meso' : 'Treino Rápido'} · ${new Date().toLocaleDateString('pt-BR')}`;
+
+  try {
+    await db.collection('sessions').add({
+      student_id:    s.id,
+      tipo,
+      data:          new Date().toLocaleDateString('pt-BR'),
+      timestamp:     firebase.firestore.FieldValue.serverTimestamp(),
+      prescrito:     true,
+      modo:          PRESC.mode,
+      pt_id:         'joao_pedro_almeida',
+      exercicios,
+      ic_planejado,
+      n:             +n_pct.toFixed(3),
+      m:             +m_pct.toFixed(3),
+      met:           +met_pct.toFixed(3),
+      dim_dominante: n_pct > m_pct && n_pct > met_pct ? 'neural'
+                   : m_pct > met_pct ? 'mecanica' : 'metabolica',
+    });
+    btn.textContent = '✓ Salvo!';
+    // Atualiza histórico em tempo real
+    if (STATE.sessions[s.id]) renderHistorico();
+    setTimeout(() => {
+      btn.disabled = false;
+      btn.textContent = PRESC.mode === 'meso' ? 'Salvar no mesociclo' : 'Salvar sessão prescrita';
+    }, 2000);
+  } catch(e) {
+    console.error(e);
+    btn.textContent = '⚠ Erro — tente novamente';
+    btn.disabled = false;
+  }
+}
+
+// ── Exportar HTML polido ─────────────────────────────
+function exportWorkoutHTML() {
+  const s = getActiveStudent();
+  if (!PRESC.items.length) return;
+
+  const nomeAluno  = s?.name || 'Aluno';
+  const labelEl    = document.getElementById('presc-session-label');
+  const nomeSession = labelEl?.value?.trim() || 'Treino de hoje';
+  const hoje = new Date().toLocaleDateString('pt-BR', { weekday:'long', day:'numeric', month:'long' });
+
+  // IC total estimado
+  const wN=0.30,wM=0.40,wMet=0.30;
+  let icTotal = 0;
+  PRESC.items.forEach(item => {
+    const cn  = (item.kg||20)*item.reps*item.series;
+    const n   = cn*(item.ex.FC||0.5)*(item.ex.DN||5)*(1+(item.ex.CT||0)*0.05);
+    const m   = cn*(item.ex.IM||6);
+    const met = cn*(item.ex.SV||3)*(90/Math.max(item.descanso,10));
+    icTotal  += wN*n + wM*m + wMet*met;
+  });
+
+  const ZONA_COLORS = {
+    leve:'#4a6832', moderado:'#a07040', pesado:'#8a6030', maximo:'#6a3020'
+  };
+
+  const exsHTML = PRESC.items.map((item, idx) => {
+    const zCol = ZONA_COLORS[item.zona] || '#8a6030';
+
+    // Tabela de séries
+    const seriesRows = Array.from({length: item.series}, (_, i) => `
+      <tr>
+        <td style="padding:7px 8px;color:#a89070;font-size:8px;border-bottom:1px solid #ede4d0;
+          text-align:center;width:28px">${i+1}</td>
+        <td style="padding:7px 8px;border-bottom:1px solid #ede4d0;font-size:9px;text-align:center">
+          ${item.kg > 0 ? `<span style="color:#8a6030">${item.kg}kg</span>` : '___kg'}
+        </td>
+        <td style="padding:7px 8px;border-bottom:1px solid #ede4d0;font-size:9px;text-align:center">
+          ${item.reps}
+        </td>
+        <td style="padding:7px 8px;border-bottom:1px solid #ede4d0;text-align:center">
+          <div style="display:flex;gap:3px;justify-content:center">
+            ${[6,7,8,9,10].map(p=>`<span style="width:18px;height:18px;border:1px solid #e0d4c0;
+              display:flex;align-items:center;justify-content:center;font-size:7px;
+              color:#c8b090;cursor:pointer">${p}</span>`).join('')}
+          </div>
+        </td>
+        <td style="padding:7px 8px;border-bottom:1px solid #ede4d0;width:60px">
+          <div style="height:1px;background:#ede4d0;margin:8px 4px"></div>
+        </td>
+      </tr>`).join('');
+
+    return `
+    <div style="border:1px solid #e8e0cc;margin-bottom:10px;background:#fff;overflow:hidden">
+
+      <!-- Header do exercício -->
+      <div style="padding:12px 14px;background:#f7f3eb;border-bottom:1px solid #ede4d0;
+        display:flex;align-items:center;gap:10px">
+        <div style="width:28px;height:28px;border-radius:50%;background:#ede4d0;
+          display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">
+          ${item.ex.icon||'🏋️'}
+        </div>
+        <div style="flex:1">
+          <div style="font-size:12px;font-weight:500;color:#1a1410">${item.ex.name}</div>
+          <div style="font-size:8px;color:#a89070;text-transform:uppercase;
+            letter-spacing:.08em;margin-top:1px">${item.objetivo} · ${item.ex.group||''}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;
+            font-size:22px;color:${zCol};line-height:1">${item.series}×${item.reps}</div>
+          <div style="font-size:7px;color:#a89070;margin-top:2px">${item.zona} · ${item.descanso}s</div>
+        </div>
+      </div>
+
+      <!-- Tags -->
+      <div style="padding:8px 14px;display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid #ede4d0">
+        <span style="font-size:7px;padding:2px 7px;border:1px solid #e0d4c0;color:${zCol}">
+          PSE alvo ${item.pse_alvo}
+        </span>
+        <span style="font-size:7px;padding:2px 7px;border:1px solid #e0d4c0;color:#a89070">
+          descanso ${item.descanso}s
+        </span>
+        <span style="font-size:7px;padding:2px 7px;border:1px solid #e0d4c0;color:#a89070">
+          ${item.progressao}
+        </span>
+      </div>
+
+      <!-- Tabela de registro -->
+      <table style="width:100%;border-collapse:collapse">
+        <thead>
+          <tr style="background:#f7f3eb">
+            <th style="padding:5px 8px;font-size:6px;text-transform:uppercase;
+              letter-spacing:.12em;color:#c8b090;font-weight:400;text-align:center">#</th>
+            <th style="padding:5px 8px;font-size:6px;text-transform:uppercase;
+              letter-spacing:.12em;color:#c8b090;font-weight:400;text-align:center">Kg</th>
+            <th style="padding:5px 8px;font-size:6px;text-transform:uppercase;
+              letter-spacing:.12em;color:#c8b090;font-weight:400;text-align:center">Reps</th>
+            <th style="padding:5px 8px;font-size:6px;text-transform:uppercase;
+              letter-spacing:.12em;color:#c8b090;font-weight:400;text-align:center">PSE</th>
+            <th style="padding:5px 8px;font-size:6px;text-transform:uppercase;
+              letter-spacing:.12em;color:#c8b090;font-weight:400">Obs</th>
+          </tr>
+        </thead>
+        <tbody>${seriesRows}</tbody>
+      </table>
+
+      ${item.ex.note ? `
+      <div style="padding:8px 14px 10px;font-size:8px;color:#a89070;font-style:italic;
+        border-top:1px solid #ede4d0;line-height:1.8;
+        border-left:2px solid #d4c4a8">${item.ex.note}</div>` : ''}
+    </div>`;
+  }).join('');
+
+  const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>Momentum · ${nomeAluno} · ${nomeSession}</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,600;1,300;1,600&family=IBM+Plex+Mono:wght@300;400&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:#f7f3eb;font-family:'IBM Plex Mono',monospace;font-size:13px;
+  -webkit-text-size-adjust:100%;}
+@media print{body{background:#fff;}}
+</style>
+</head>
+<body>
+<div style="max-width:480px;margin:0 auto;padding:20px 14px 40px">
+
+  <!-- Header -->
+  <div style="text-align:center;padding:20px 0 16px;border-bottom:1px solid #e0d4c0;
+    margin-bottom:16px">
+    <div style="font-family:'Cormorant Garamond',serif;font-style:italic;font-size:26px;
+      color:#8a6030;letter-spacing:.03em">Momentum</div>
+    <div style="font-size:9px;text-transform:uppercase;letter-spacing:.2em;
+      color:#a89070;margin-top:3px">${nomeAluno}</div>
+    <div style="font-family:'Cormorant Garamond',serif;font-style:italic;
+      font-size:18px;color:#1a1410;margin-top:6px">${nomeSession}</div>
+    <div style="font-size:8px;color:#c8b090;margin-top:3px">${hoje}</div>
+  </div>
+
+  <!-- Resumo -->
+  <div style="display:flex;gap:6px;margin-bottom:16px">
+    <div style="flex:1;padding:10px;border:1px solid #e0d4c0;text-align:center;background:#fff">
+      <div style="font-size:7px;text-transform:uppercase;letter-spacing:.16em;
+        color:#a89070;margin-bottom:4px">Exercícios</div>
+      <div style="font-family:'Cormorant Garamond',serif;font-style:italic;
+        font-size:22px;color:#8a6030">${PRESC.items.length}</div>
+    </div>
+    <div style="flex:1;padding:10px;border:1px solid #e0d4c0;text-align:center;background:#fff">
+      <div style="font-size:7px;text-transform:uppercase;letter-spacing:.16em;
+        color:#a89070;margin-bottom:4px">IC planejado</div>
+      <div style="font-family:'Cormorant Garamond',serif;font-style:italic;
+        font-size:22px;color:#8a6030">${Math.round(icTotal/1000)}k</div>
+    </div>
+    <div style="flex:1;padding:10px;border:1px solid #e0d4c0;text-align:center;background:#fff">
+      <div style="font-size:7px;text-transform:uppercase;letter-spacing:.16em;
+        color:#a89070;margin-bottom:4px">Séries</div>
+      <div style="font-family:'Cormorant Garamond',serif;font-style:italic;
+        font-size:22px;color:#8a6030">${PRESC.items.reduce((t,i)=>t+i.series,0)}</div>
+    </div>
+  </div>
+
+  <!-- Exercícios -->
+  ${exsHTML}
+
+  <!-- Rodapé -->
+  <div style="text-align:center;margin-top:20px;padding-top:14px;
+    border-top:1px solid #e0d4c0;font-size:7px;color:#c8b090;line-height:2;
+    text-transform:uppercase;letter-spacing:.14em">
+    Momentum · João Pedro Almeida<br>
+    <span style="font-style:italic;font-family:'Cormorant Garamond',serif;
+      font-size:10px;text-transform:none;letter-spacing:0">
+      seu treino tem direção
+    </span>
+  </div>
+
+</div>
+</body>
+</html>`;
+
+  const blob = new Blob([html], { type: 'text/html' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = `momentum-${(nomeSession||'treino').toLowerCase().replace(/[^a-z0-9]/g,'-')}-${(s?.name||'aluno').toLowerCase().split(' ')[0]}.html`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ── Init da prescrição (chamado ao entrar na aba) ────
+function initPresc() {
+  if (!EX_DB.length) loadExercisesDB();
+  else renderExBank();
+}
+
+// ═══════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════
+window.addEventListener('load', () => {
+  const ov = document.getElementById('app-loading');
+  setTimeout(() => {
+    ov.classList.add('out');
+    setTimeout(() => ov.remove(), 400);
+  }, 900);
+});
+</script>
+</body>
+</html>
