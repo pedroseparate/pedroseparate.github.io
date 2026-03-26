@@ -1,0 +1,1437 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Momentum · Lucas Moreira</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400;1,600;1,700&family=IBM+Plex+Mono:ital,wght@0,300;0,400;1,300;1,400&display=swap" rel="stylesheet">
+<style>
+/* ── TOKENS ─────────────────────────────────────────── */
+:root,[data-theme="dark"]{
+  --night:#16120d;--night2:#1e1810;--night3:#271f13;--night4:#2e2618;
+  --page:#f5f0e6;
+  --copper:#8a6030;--copper2:#a07840;
+  --gold:#c8a060;--gold2:#ddb870;--gold3:#e8cc90;
+  --moss:#4a6832;--moss2:#5a8040;--moss3:#6aa050;
+  --slate:#2e5060;--slate2:#3a6878;
+  --danger:#8a3020;--danger2:#b84030;
+  /* futebol accent */
+  --grass:#2d5a1b;--grass2:#3d7a28;--grass3:#52a038;
+  /* neural / mecanica / metabolica */
+  --neural:rgba(150,140,220,.85);--neural-bg:rgba(91,33,182,.08);
+  --mec:rgba(90,170,210,.85);--mec-bg:rgba(46,80,96,.1);
+  --met:rgba(80,190,130,.85);--met-bg:rgba(22,101,52,.08);
+  /* borders / inks */
+  --b:rgba(200,160,96,.10);--b2:rgba(200,160,96,.18);--b3:rgba(200,160,96,.30);
+  --ink:rgba(200,160,96,.90);--ink2:rgba(200,160,96,.58);--ink3:rgba(200,160,96,.32);
+  --bg:var(--night);--bg2:var(--night2);--bg3:var(--night3);
+  --card-bg:var(--night2);--card-border:var(--b);
+}
+
+/* ── RESET ──────────────────────────────────────────── */
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;overflow:hidden;}
+body{background:var(--night);color:var(--ink);font-family:'IBM Plex Mono',monospace;}
+body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9998;opacity:.25;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.88' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='400' height='400' filter='url(%23g)' opacity='.022'/%3E%3C/svg%3E");}
+
+/* ── APP SHELL ──────────────────────────────────────── */
+.app{width:100%;max-width:430px;margin:0 auto;height:100vh;display:flex;flex-direction:column;position:relative;overflow:hidden;}
+.screen{position:absolute;inset:0;display:flex;flex-direction:column;opacity:0;pointer-events:none;transition:opacity .26s ease,transform .26s ease;transform:translateX(24px);}
+.screen.active{opacity:1;pointer-events:all;transform:translateX(0);}
+.screen.exit-left{opacity:0;transform:translateX(-24px);}
+.sbody{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+.sbody::-webkit-scrollbar{display:none;}
+
+/* ── TOPBAR ─────────────────────────────────────────── */
+.topbar{flex-shrink:0;padding:16px 20px 12px;display:flex;align-items:center;justify-content:space-between;background:rgba(22,18,13,.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--b);z-index:10;}
+.tb-back{font-size:18px;color:var(--ink2);cursor:pointer;padding:4px 4px 4px 0;width:32px;}
+.tb-logo{font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:600;font-size:16px;color:var(--gold);}
+.tb-title{font-size:10px;text-transform:uppercase;letter-spacing:.16em;color:var(--ink2);}
+.tb-right{width:32px;text-align:right;font-size:10px;color:var(--ink3);}
+
+/* ── BOTTOM NAV ─────────────────────────────────────── */
+.bnav{flex-shrink:0;display:flex;border-top:1px solid var(--b);background:rgba(22,18,13,.96);padding:10px 0 max(10px,env(safe-area-inset-bottom));}
+.bnav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;font-size:7px;text-transform:uppercase;letter-spacing:.12em;color:var(--ink3);background:none;border:none;font-family:'IBM Plex Mono',monospace;padding:0;transition:color .15s;}
+.bnav-item.active{color:var(--gold);}
+.bnav-icon{font-size:17px;line-height:1;}
+
+/* ── SHARED ─────────────────────────────────────────── */
+.sec{padding:0 20px;margin-bottom:24px;}
+.sec-head{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
+.sec-title{font-size:9px;text-transform:uppercase;letter-spacing:.22em;color:var(--copper2);white-space:nowrap;}
+.sec-line{flex:1;height:1px;background:var(--b);}
+.card{background:var(--night3);border:1px solid var(--b);border-radius:3px;}
+.kicker{font-size:9px;text-transform:uppercase;letter-spacing:.18em;color:var(--copper2);margin-bottom:6px;}
+.tag{display:inline-block;font-size:7px;text-transform:uppercase;letter-spacing:.1em;padding:3px 7px;border-radius:2px;border:1px solid var(--b2);color:var(--ink3);}
+.tag-green{border-color:rgba(90,128,64,.35);color:var(--moss3);background:rgba(74,104,50,.08);}
+.tag-gold{border-color:rgba(200,160,60,.35);color:var(--gold2);background:rgba(138,96,48,.08);}
+.tag-grass{border-color:rgba(61,122,40,.4);color:var(--grass3);background:rgba(45,90,27,.1);}
+.tag-slate{border-color:rgba(58,104,120,.4);color:var(--slate2);background:rgba(46,80,96,.1);}
+
+/* ── HOME HERO ──────────────────────────────────────── */
+.hero{padding:22px 20px 20px;}
+.hero-sport{font-size:8px;color:var(--grass3);text-transform:uppercase;letter-spacing:.2em;margin-bottom:8px;display:flex;align-items:center;gap:8px;}
+.hero-sport::before{content:'';display:inline-block;width:20px;height:1px;background:var(--grass2);}
+.hero-name{font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:600;font-size:42px;line-height:.88;color:var(--gold);margin-bottom:6px;letter-spacing:-.01em;}
+.hero-sub{font-size:9px;color:var(--ink3);text-transform:uppercase;letter-spacing:.14em;margin-bottom:20px;}
+.hero-tags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:18px;}
+
+/* ── MOMENTUM CARD ──────────────────────────────────── */
+.ms-card{padding:16px;display:flex;align-items:center;gap:14px;}
+.ms-arc{position:relative;width:58px;height:58px;flex-shrink:0;}
+.ms-arc svg{width:58px;height:58px;}
+.ms-arc-val{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:600;font-size:19px;color:var(--gold);}
+.ms-label{font-size:8px;text-transform:uppercase;letter-spacing:.14em;color:var(--ink3);margin-bottom:4px;}
+.ms-title{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:15px;color:var(--gold2);margin-bottom:3px;}
+.ms-desc{font-size:9px;color:var(--ink2);line-height:1.7;}
+
+/* ── SEMANA CALENDAR ─────────────────────────────────── */
+.cal-wrap{display:flex;flex-direction:column;gap:5px;}
+.cal-row{display:flex;border:1px solid var(--b);border-radius:3px;overflow:hidden;min-height:44px;position:relative;}
+.cal-row.cal-active{border-color:var(--copper);}
+.cal-row.cal-football{border-color:rgba(61,122,40,.35);}
+.cal-row.cal-rest{opacity:.42;}
+.cal-day-pill{width:38px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:6px 0;background:var(--night3);}
+.cal-day-lbl{font-size:7px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink3);}
+.cal-day-ico{font-size:14px;line-height:1;margin-top:2px;}
+.cal-row.cal-active .cal-day-lbl{color:var(--copper2);}
+.cal-row.cal-football .cal-day-lbl{color:var(--grass3);}
+.cal-body{flex:1;padding:8px 12px;display:flex;flex-direction:column;justify-content:center;gap:2px;border-left:1px solid var(--b);}
+.cal-row.cal-football .cal-body{border-left-color:rgba(61,122,40,.2);}
+.cal-row.cal-active .cal-body{border-left-color:rgba(138,96,48,.3);}
+.cal-type{font-size:9px;color:var(--ink2);}
+.cal-row.cal-active .cal-type{color:var(--gold);}
+.cal-row.cal-football .cal-type{color:var(--grass3);}
+.cal-detail{font-size:8px;color:var(--ink3);line-height:1.5;}
+.cal-right{padding:6px 10px;display:flex;flex-direction:column;align-items:flex-end;justify-content:center;gap:3px;flex-shrink:0;}
+.cal-ci{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:13px;color:var(--ink2);}
+.cal-ci-lbl{font-size:7px;color:var(--ink3);text-transform:uppercase;letter-spacing:.08em;}
+.cal-dot-done{width:6px;height:6px;border-radius:50%;background:var(--moss2);flex-shrink:0;}
+.cal-dot-active{width:6px;height:6px;border-radius:50%;background:var(--gold);box-shadow:0 0 8px rgba(200,160,96,.5);flex-shrink:0;}
+
+/* carga interna bar na linha do futebol */
+.cal-ci-bar{width:50px;height:3px;border-radius:2px;overflow:hidden;margin-top:2px;}
+.cal-ci-bar-fill{height:100%;border-radius:2px;}
+.ci-football{background:linear-gradient(90deg,var(--grass2),var(--grass3));}
+.ci-academia{background:linear-gradient(90deg,var(--copper),var(--gold));}
+
+/* ── NOTA PT ─────────────────────────────────────────── */
+.pt-msg{padding:14px;position:relative;}
+.pt-msg-author{font-size:8px;color:var(--copper2);margin-bottom:6px;text-transform:uppercase;letter-spacing:.1em;}
+.pt-msg-text{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:14px;color:var(--ink2);line-height:1.6;}
+.pt-msg-date{font-size:7px;color:var(--ink3);margin-top:8px;}
+
+/* ── DIVISÕES TABS ───────────────────────────────────── */
+.div-tabs{display:flex;gap:0;border-bottom:1px solid var(--b);flex-shrink:0;overflow-x:auto;scrollbar-width:none;}
+.div-tabs::-webkit-scrollbar{display:none;}
+.div-tab{flex:1;min-width:80px;padding:12px 8px;font-size:8px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink3);background:none;border:none;border-bottom:2px solid transparent;cursor:pointer;font-family:'IBM Plex Mono',monospace;transition:all .15s;white-space:nowrap;}
+.div-tab.active{color:var(--gold);border-bottom-color:var(--copper);}
+.div-content{display:none;}
+.div-content.active{display:block;}
+
+/* ── EXERCISE CARDS ──────────────────────────────────── */
+.ex-card{background:var(--night3);border:1px solid var(--b);border-radius:3px;margin:0 20px 8px;overflow:hidden;}
+.ex-card.plyo{border-color:rgba(200,160,96,.25);}
+.ex-card.prevention{border-color:rgba(46,80,96,.4);}
+.ex-card-hdr{padding:13px 14px;display:flex;align-items:center;gap:10px;cursor:pointer;}
+.ex-num{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:18px;color:var(--ink3);width:24px;flex-shrink:0;line-height:1;}
+.ex-meta{flex:1;}
+.ex-card-name{font-size:11px;color:var(--ink);margin-bottom:2px;}
+.ex-card-pre{font-size:8px;color:var(--ink3);line-height:1.6;}
+.ex-chevron{font-size:10px;color:var(--ink3);transition:transform .2s;}
+.ex-card.open .ex-chevron{transform:rotate(90deg);}
+.ex-tags{display:flex;gap:4px;margin-top:4px;flex-wrap:wrap;}
+
+/* coef strip */
+.coef-strip{padding:8px 14px;border-top:1px solid var(--b);display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
+.coef-item{display:flex;align-items:center;gap:4px;}
+.coef-lbl{font-size:7px;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;}
+.coef-bar-wrap{width:40px;height:3px;background:var(--b);border-radius:2px;overflow:hidden;}
+.coef-bar{height:100%;border-radius:2px;}
+.coef-val{font-size:8px;color:var(--ink2);}
+.coef-neural .coef-bar{background:var(--neural);}
+.coef-mec .coef-bar{background:var(--mec);}
+.coef-met .coef-bar{background:var(--met);}
+
+/* series table */
+.series-tbl{padding:0 14px 10px;}
+.stbl-head{display:grid;grid-template-columns:24px 1fr 1fr 1fr;gap:4px;padding:4px 0 6px;border-bottom:1px solid var(--b);}
+.stbl-lbl{font-size:7px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink3);}
+.serie-row{display:grid;grid-template-columns:24px 1fr 1fr 1fr;gap:4px;padding:5px 0;border-bottom:1px solid rgba(200,160,96,.05);}
+.serie-row:last-child{border-bottom:none;}
+.s-num{font-size:8px;color:var(--ink3);}
+.s-val{font-size:9px;color:var(--ink2);}
+
+/* insight / explicação leigo */
+.insight{padding:10px 14px;font-size:9px;line-height:1.8;border-top:1px solid var(--b);color:var(--ink2);}
+.insight-tech{background:rgba(91,33,182,.05);}
+.insight-leigo{background:rgba(61,122,40,.04);}
+.insight-label{font-size:7px;text-transform:uppercase;letter-spacing:.14em;margin-bottom:4px;}
+.insight-label.tech{color:var(--neural);}
+.insight-label.leigo{color:var(--grass3);}
+
+/* ── MESOCICLO ───────────────────────────────────────── */
+.prog-table{width:100%;border-collapse:collapse;}
+.prog-table th{font-size:7px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink3);padding:6px 8px;border-bottom:1px solid var(--b);text-align:left;background:var(--night3);}
+.prog-table td{font-size:9px;color:var(--ink2);padding:8px 8px;border-bottom:1px solid var(--b);vertical-align:top;}
+.prog-table tr:last-child td{border-bottom:none;}
+.prog-table tr.sem-atual td{color:var(--gold);}
+.prog-table tr.sem-deload td{color:var(--slate2);}
+.sem-badge{font-size:7px;padding:2px 6px;border-radius:2px;display:inline-block;text-transform:uppercase;letter-spacing:.08em;}
+.sem-badge.acum{background:rgba(74,104,50,.12);color:var(--moss3);border:1px solid rgba(90,128,64,.25);}
+.sem-badge.intens{background:rgba(138,96,48,.12);color:var(--copper2);border:1px solid rgba(138,96,48,.3);}
+.sem-badge.deload{background:rgba(46,80,96,.12);color:var(--slate2);border:1px solid rgba(58,104,120,.25);}
+
+/* ── ANÁLISE / RADAR ─────────────────────────────────── */
+.radar-wrap{display:flex;justify-content:center;padding:10px 0 4px;}
+.coef-context{background:var(--night3);border:1px solid var(--b);border-radius:3px;padding:14px;}
+.coef-row{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.coef-row:last-child{margin-bottom:0;}
+.coef-icon{font-size:16px;width:20px;flex-shrink:0;text-align:center;}
+.coef-info{flex:1;}
+.coef-name{font-size:10px;color:var(--ink);margin-bottom:2px;}
+.coef-desc{font-size:8px;color:var(--ink3);line-height:1.6;}
+.coef-right{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:20px;color:var(--gold2);flex-shrink:0;}
+
+/* ── CARGA SEMANAL CHART ─────────────────────────────── */
+.chart-card{background:var(--night3);border:1px solid var(--b);border-radius:3px;padding:14px 14px 10px;}
+.chart-legend{display:flex;gap:16px;margin-bottom:12px;}
+.legend-item{display:flex;align-items:center;gap:5px;font-size:7px;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;}
+.legend-dot{width:8px;height:8px;border-radius:2px;}
+
+/* ── DISTRIBUIÇÃO COEFICIENTES ───────────────────────── */
+.coef-alert{padding:14px;background:rgba(138,96,48,.06);border-radius:3px;border:1px solid rgba(138,96,48,.2);}
+.coef-alert-title{font-size:10px;color:var(--copper2);margin-bottom:6px;}
+.coef-alert-text{font-size:9px;color:var(--ink2);line-height:1.8;}
+.coef-alert-leigo{margin-top:10px;padding-top:10px;border-top:1px solid var(--b);}
+.coef-alert-leigo-lbl{font-size:7px;text-transform:uppercase;letter-spacing:.12em;color:var(--grass3);margin-bottom:4px;}
+.coef-alert-leigo-text{font-size:9px;color:var(--ink2);line-height:1.8;}
+
+/* ── WEIGHTS TABLE ───────────────────────────────────── */
+.weights-table{width:100%;border-collapse:collapse;}
+.weights-table th{font-size:7px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink3);padding:5px 8px;border-bottom:1px solid var(--b);text-align:left;background:var(--night3);}
+.weights-table td{font-size:9px;color:var(--ink2);padding:7px 8px;border-bottom:1px solid rgba(200,160,96,.05);}
+.weights-table tr:last-child td{border-bottom:none;}
+
+/* ── EXTRA NEEDED ────────────────────────────────────── */
+.add-list{display:flex;flex-direction:column;gap:6px;}
+.add-item{background:var(--night3);border:1px solid var(--b);border-radius:3px;padding:12px 14px;display:flex;gap:10px;align-items:flex-start;}
+.add-item.priority-high{border-color:rgba(184,64,48,.35);background:rgba(138,48,32,.05);}
+.add-item.priority-med{border-color:rgba(46,80,96,.35);}
+.add-prio{font-size:9px;width:14px;flex-shrink:0;margin-top:1px;}
+.add-info{flex:1;}
+.add-name{font-size:10px;color:var(--ink);margin-bottom:3px;}
+.add-reason{font-size:8px;color:var(--ink3);line-height:1.65;}
+
+/* ── SCROLL SPACER ───────────────────────────────────── */
+.scroll-spacer{height:96px;}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- ══════════════════════════════════════════════════════
+     HOME
+═══════════════════════════════════════════════════════ -->
+<div class="screen active" id="s-home">
+  <div class="topbar">
+    <div class="tb-logo">Momentum</div>
+    <div class="tb-title">GPP · Futebol</div>
+    <div class="tb-right">S1</div>
+  </div>
+  <div class="sbody">
+
+    <!-- HERO -->
+    <div class="hero">
+      <div class="hero-sport">Futebol · Amador</div>
+      <div class="hero-name">Lucas<br>Moreira</div>
+      <div class="hero-sub">GPP · Preparação Física Geral · Mês 1</div>
+      <div class="hero-tags">
+        <span class="tag tag-grass">⚽ 3×/sem bola</span>
+        <span class="tag tag-gold">🏋️ 3×/sem academia</span>
+        <span class="tag">Mesociclo 1 · 4 semanas</span>
+      </div>
+    </div>
+
+    <!-- MOMENTUM CARD -->
+    <div class="sec">
+      <div class="sec-head"><div class="sec-title">Seu Momentum</div><div class="sec-line"></div></div>
+      <div class="card">
+        <div class="ms-card">
+          <div class="ms-arc">
+            <svg viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="30" cy="30" r="24" stroke="rgba(200,160,96,.12)" stroke-width="4"/>
+              <circle cx="30" cy="30" r="24" stroke="url(#mg)" stroke-width="4"
+                stroke-dasharray="150.8" stroke-dashoffset="100" stroke-linecap="round" transform="rotate(-90 30 30)"/>
+              <defs><linearGradient id="mg" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#8a6030"/><stop offset="100%" stop-color="#ddb870"/>
+              </linearGradient></defs>
+            </svg>
+            <div class="ms-arc-val">—</div>
+          </div>
+          <div>
+            <div class="ms-label">Ritmo de Adaptação</div>
+            <div class="ms-title">Semana 1 — Base</div>
+            <div class="ms-desc">Primeiros dados chegando. Ritmo calculado após S2. Foco em executar com qualidade.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CALENDÁRIO SEMANAL -->
+    <div class="sec">
+      <div class="sec-head"><div class="sec-title">Esta semana</div><div class="sec-line"></div></div>
+      <div class="cal-wrap">
+
+        <!-- Segunda — Futebol -->
+        <div class="cal-row cal-football">
+          <div class="cal-day-pill">
+            <div class="cal-day-lbl">Seg</div>
+            <div class="cal-day-ico">⚽</div>
+          </div>
+          <div class="cal-body">
+            <div class="cal-type">Futebol</div>
+            <div class="cal-detail">1h30–2h · noite</div>
+          </div>
+          <div class="cal-right">
+            <div class="cal-ci">~620</div>
+            <div class="cal-ci-lbl">CI (PSE×min)</div>
+            <div class="cal-ci-bar"><div class="cal-ci-bar-fill ci-football" style="width:78%"></div></div>
+          </div>
+        </div>
+
+        <!-- Terça — Div A -->
+        <div class="cal-row cal-active">
+          <div class="cal-day-pill">
+            <div class="cal-day-lbl">Ter</div>
+            <div class="cal-day-ico">🏋️</div>
+          </div>
+          <div class="cal-body">
+            <div class="cal-type">Divisão A · Superior</div>
+            <div class="cal-detail">Empurrada · Puxada · Core</div>
+          </div>
+          <div class="cal-right">
+            <div class="cal-dot-active"></div>
+          </div>
+        </div>
+
+        <!-- Quarta — Futebol -->
+        <div class="cal-row cal-football">
+          <div class="cal-day-pill">
+            <div class="cal-day-lbl">Qua</div>
+            <div class="cal-day-ico">⚽</div>
+          </div>
+          <div class="cal-body">
+            <div class="cal-type">Futebol</div>
+            <div class="cal-detail">1h30–2h · noite</div>
+          </div>
+          <div class="cal-right">
+            <div class="cal-ci">~620</div>
+            <div class="cal-ci-lbl">CI (PSE×min)</div>
+            <div class="cal-ci-bar"><div class="cal-ci-bar-fill ci-football" style="width:78%"></div></div>
+          </div>
+        </div>
+
+        <!-- Quinta — Div B -->
+        <div class="cal-row">
+          <div class="cal-day-pill">
+            <div class="cal-day-lbl">Qui</div>
+            <div class="cal-day-ico">🏋️</div>
+          </div>
+          <div class="cal-body">
+            <div class="cal-type">Divisão B · Inferior</div>
+            <div class="cal-detail">Força · Plyo · Prevenção</div>
+          </div>
+          <div class="cal-right">
+            <div class="cal-ci"></div>
+          </div>
+        </div>
+
+        <!-- Sexta — Div A₂ -->
+        <div class="cal-row">
+          <div class="cal-day-pill">
+            <div class="cal-day-lbl">Sex</div>
+            <div class="cal-day-ico">🏋️</div>
+          </div>
+          <div class="cal-body">
+            <div class="cal-type">Divisão A₂ · Superior Vol.</div>
+            <div class="cal-detail">Volume · Acessórios</div>
+          </div>
+          <div class="cal-right">
+            <div class="cal-ci"></div>
+          </div>
+        </div>
+
+        <!-- Sábado — Futebol -->
+        <div class="cal-row cal-football">
+          <div class="cal-day-pill">
+            <div class="cal-day-lbl">Sáb</div>
+            <div class="cal-day-ico">⚽</div>
+          </div>
+          <div class="cal-body">
+            <div class="cal-type">Futebol</div>
+            <div class="cal-detail">1h30–2h · manhã</div>
+          </div>
+          <div class="cal-right">
+            <div class="cal-ci">~620</div>
+            <div class="cal-ci-lbl">CI (PSE×min)</div>
+            <div class="cal-ci-bar"><div class="cal-ci-bar-fill ci-football" style="width:78%"></div></div>
+          </div>
+        </div>
+
+        <!-- Domingo — Descanso -->
+        <div class="cal-row cal-rest">
+          <div class="cal-day-pill">
+            <div class="cal-day-lbl">Dom</div>
+            <div class="cal-day-ico">😴</div>
+          </div>
+          <div class="cal-body">
+            <div class="cal-type">Descanso</div>
+          </div>
+          <div class="cal-right"></div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- NOTA CI FUTEBOL -->
+    <div class="sec">
+      <div class="card" style="padding:12px 14px;">
+        <div style="font-size:8px;color:var(--grass3);text-transform:uppercase;letter-spacing:.12em;margin-bottom:6px;">ℹ Sobre a Carga Interna do Futebol</div>
+        <div style="font-size:9px;color:var(--ink2);line-height:1.75;">
+          As sessões de futebol entram no Momentum como <strong style="color:var(--ink)">Carga Interna estimada</strong> — PSE × duração (modelo Foster). Sem CargaObjetiva calculável pelo app, pois não há prescrição de exercícios.<br><br>
+          <span style="color:var(--grass3);">⟶</span> Estimativa: PSE 6.5 × 95 min ≈ <strong style="color:var(--grass3);">~620 UA/sessão · ~1860 UA/semana</strong> só de futebol.
+        </div>
+        <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--b);">
+          <div style="font-size:7px;color:var(--grass3);text-transform:uppercase;letter-spacing:.12em;margin-bottom:4px;">Para o Lucas</div>
+          <div style="font-size:9px;color:var(--ink2);line-height:1.75;">É como se cada partida de futebol já fosse um "treino de perna completo" em termos de carga no seu corpo. Por isso o Momentum foca em força e prevenção nos membros inferiores — não em volume de hipertrofia, que o futebol já entrega.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MENSAGEM PT -->
+    <div class="sec">
+      <div class="sec-head"><div class="sec-title">Mensagem do PT</div><div class="sec-line"></div></div>
+      <div class="card">
+        <div class="pt-msg">
+          <div class="pt-msg-author">João Pedro · Personal Trainer</div>
+          <div class="pt-msg-text">"Lucas, o foco desta primeira fase é construir base. Não force carga nos exercícios de perna — o futebol já te dá volume. Capriche na qualidade do Nordic Curl e no Agachamento. Superiores: progrida com confiança."</div>
+          <div class="pt-msg-date">Mesociclo 1 · Semana 1</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="scroll-spacer"></div>
+  </div>
+  <nav class="bnav">
+    <button class="bnav-item active" onclick="goPage('home')"><span class="bnav-icon">🏠</span>Hoje</button>
+    <button class="bnav-item" onclick="goPage('treinos')"><span class="bnav-icon">💪</span>Treinos</button>
+    <button class="bnav-item" onclick="goPage('meso')"><span class="bnav-icon">📅</span>Ciclo</button>
+    <button class="bnav-item" onclick="goPage('analise')"><span class="bnav-icon">📊</span>Análise</button>
+  </nav>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     TREINOS
+═══════════════════════════════════════════════════════ -->
+<div class="screen" id="s-treinos">
+  <div class="topbar">
+    <div class="tb-back" onclick="goPage('home')">←</div>
+    <div class="tb-title">Divisões</div>
+    <div class="tb-right">3</div>
+  </div>
+  <div class="div-tabs">
+    <button class="div-tab active" onclick="showDiv(0,this)">A · Ter</button>
+    <button class="div-tab" onclick="showDiv(1,this)">B · Qui</button>
+    <button class="div-tab" onclick="showDiv(2,this)">A₂ · Sex</button>
+  </div>
+  <div class="sbody" style="padding-top:16px">
+    <!-- DIVISÃO A -->
+    <div class="div-content active" id="div-0">
+      <div style="padding:0 20px 12px">
+        <div class="kicker">Divisão A · Terça</div>
+        <div style="font-family:'Cormorant Garamond',serif;font-style:italic;font-size:20px;color:var(--gold);margin-bottom:4px;">Superior + Core Anti-Rotação</div>
+        <div style="font-size:9px;color:var(--ink2);line-height:1.7;">7 exercícios · ~55–65 min · wN=0.25 · wM=0.45 · wMet=0.30</div>
+        <div style="font-size:8px;color:var(--ink3);margin-top:4px;">24h após futebol segunda. Pernas livres — foco total em superiores.</div>
+      </div>
+
+      <!-- Ex 1 -->
+      <div class="ex-card" id="exA1">
+        <div class="ex-card-hdr" onclick="toggleEx('exA1')">
+          <div class="ex-num">1</div>
+          <div class="ex-meta">
+            <div class="ex-card-name">💪 Supino c/ Halteres</div>
+            <div class="ex-card-pre">4 × 8–10 · Push horizontal principal</div>
+            <div class="ex-tags"><span class="tag">CT 5.0</span><span class="tag">IM 7.0</span><span class="tag">DN 5.5</span><span class="tag">SV 4.0</span><span class="tag">FC 0.55</span></div>
+          </div>
+          <div class="ex-chevron">›</div>
+        </div>
+        <div class="coef-strip" style="display:none">
+          <div class="coef-item coef-neural"><div class="coef-lbl">Neural</div><div class="coef-bar-wrap"><div class="coef-bar" style="width:55%"></div></div><div class="coef-val">5.5</div></div>
+          <div class="coef-item coef-mec"><div class="coef-lbl">Mec.</div><div class="coef-bar-wrap"><div class="coef-bar" style="width:70%"></div></div><div class="coef-val">7.0</div></div>
+          <div class="coef-item coef-met"><div class="coef-lbl">Met.</div><div class="coef-bar-wrap"><div class="coef-bar" style="width:40%"></div></div><div class="coef-val">4.0</div></div>
+        </div>
+        <div class="series-tbl" style="display:none">
+          <div class="stbl-head"><div class="stbl-lbl">Série</div><div class="stbl-lbl">Reps</div><div class="stbl-lbl">Descanso</div><div class="stbl-lbl">Zona</div></div>
+          <div class="serie-row"><div class="s-num">1</div><div class="s-val">8–10</div><div class="s-val">90s</div><div class="s-val">Hiper.</div></div>
+          <div class="serie-row"><div class="s-num">2</div><div class="s-val">8–10</div><div class="s-val">90s</div><div class="s-val">Hiper.</div></div>
+          <div class="serie-row"><div class="s-num">3</div><div class="s-val">8–10</div><div class="s-val">90s</div><div class="s-val">Hiper.</div></div>
+          <div class="serie-row"><div class="s-num">4</div><div class="s-val">8–10</div><div class="s-val">90s</div><div class="s-val">Hiper.</div></div>
+        </div>
+        <div class="insight insight-tech" style="display:none">
+          <div class="insight-label tech">Técnico</div>
+          Maior amplitude de movimento que barra + exigência de estabilização escapular. FC 0.55 eleva o custo neural relativo ao Supino Reto. Dominante no componente Mecânica (IM 7.0).
+        </div>
+        <div class="insight insight-leigo" style="display:none">
+          <div class="insight-label leigo">Em outras palavras</div>
+          Com halteres cada braço trabalha de forma independente, o que obriga seu ombro a estabilizar mais. É um exercício "mais honesto" que o supino com barra — menos trapaça possível.
+        </div>
+      </div>
+
+      <!-- Ex 2 -->
+      <div class="ex-card" id="exA2">
+        <div class="ex-card-hdr" onclick="toggleEx('exA2')">
+          <div class="ex-num">2</div>
+          <div class="ex-meta">
+            <div class="ex-card-name">🏋️ Barra Fixa</div>
+            <div class="ex-card-pre">4 × 6–8 · Pull vertical dominante</div>
+            <div class="ex-tags"><span class="tag">CT 5.5</span><span class="tag">IM 8.0</span><span class="tag">DN 6.5</span><span class="tag">SV 5.0</span><span class="tag">FC 0.85</span></div>
+          </div>
+          <div class="ex-chevron">›</div>
+        </div>
+        <div class="coef-strip" style="display:none">
+          <div class="coef-item coef-neural"><div class="coef-lbl">Neural</div><div class="coef-bar-wrap"><div class="coef-bar" style="width:65%"></div></div><div class="coef-val">6.5</div></div>
+          <div class="coef-item coef-mec"><div class="coef-lbl">Mec.</div><div class="coef-bar-wrap"><div class="coef-bar" style="width:80%"></div></div><div class="coef-val">8.0</div></div>
+          <div class="coef-item coef-met"><div class="coef-lbl">Met.</div><div class="coef-bar-wrap"><div class="coef-bar" style="width:50%"></div></div><div class="coef-val">5.0</div></div>
+        </div>
+        <div class="series-tbl" style="display:none">
+          <div class="stbl-head"><div class="stbl-lbl">Série</div><div class="stbl-lbl">Reps</div><div class="stbl-lbl">Descanso</div><div class="stbl-lbl">Zona</div></div>
+          <div class="serie-row"><div class="s-num">1</div><div class="s-val">6–8</div><div class="s-val">90s</div><div class="s-val">Força</div></div>
+          <div class="serie-row"><div class="s-num">2</div><div class="s-val">6–8</div><div class="s-val">90s</div><div class="s-val">Força</div></div>
+          <div class="serie-row"><div class="s-num">3</div><div class="s-val">6–8</div><div class="s-val">90s</div><div class="s-val">Força</div></div>
+          <div class="serie-row"><div class="s-num">4</div><div class="s-val">6–8</div><div class="s-val">90s</div><div class="s-val">Força</div></div>
+        </div>
+        <div class="insight insight-tech" style="display:none">
+          <div class="insight-label tech">Técnico</div>
+          FC 0.85 é o maior dentre os pulls verticais — peso corporal exige coordenação de toda a cadeia de puxada sem apoio externo. IM 8.0 reflete tensão mecânica significativa em dorsais e bíceps. Melhor indicador de força relativa do banco.
+        </div>
+        <div class="insight insight-leigo" style="display:none">
+          <div class="insight-label leigo">Em outras palavras</div>
+          Se tem um exercício que define a "força real" nas costas, é a barra fixa. Você levanta o próprio corpo — sem máquina para ajudar. Poucas reps com qualidade valem mais que muitas reps com balanço.
+        </div>
+      </div>
+
+      <!-- Ex 3 -->
+      <div class="ex-card" id="exA3">
+        <div class="ex-card-hdr" onclick="toggleEx('exA3')">
+          <div class="ex-num">3</div>
+          <div class="ex-meta">
+            <div class="ex-card-name">🏋️ Desenvolvimento c/ Halteres</div>
+            <div class="ex-card-pre">3 × 10–12 · Push vertical · Ombro</div>
+            <div class="ex-tags"><span class="tag">CT 5.0</span><span class="tag">IM 7.0</span><span class="tag">DN 5.5</span><span class="tag">FC 0.50</span></div>
+          </div>
+          <div class="ex-chevron">›</div>
+        </div>
+        <div class="series-tbl" style="display:none">
+          <div class="stbl-head"><div class="stbl-lbl">Série</div><div class="stbl-lbl">Reps</div><div class="stbl-lbl">Descanso</div><div class="stbl-lbl">Zona</div></div>
+          <div class="serie-row"><div class="s-num">1</div><div class="s-val">10–12</div><div class="s-val">75s</div><div class="s-val">Hiper.</div></div>
+          <div class="serie-row"><div class="s-num">2</div><div class="s-val">10–12</div><div class="s-val">75s</div><div class="s-val">Hiper.</div></div>
+          <div class="serie-row"><div class="s-num">3</div><div class="s-val">10–12</div><div class="s-val">75s</div><div class="s-val">Hiper.</div></div>
+        </div>
+        <div class="insight insight-leigo" style="display:none">
+          <div class="insight-label leigo">Em outras palavras</div>
+          Ombros são o grupo mais negligenciado em jogadores de futebol. Fortalecer aqui melhora postura e protege o ombro em divididas e quedas.
+        </div>
+      </div>
+
+      <!-- Ex 4 -->
+      <div class="ex-card" id="exA4">
+        <div class="ex-card-hdr" onclick="toggleEx('exA4')">
+          <div class="ex-num">4</div>
+          <div class="ex-meta">
+            <div class="ex-card-name">🏋️ Remada Unilateral</div>
+            <div class="ex-card-pre">3 × 10–12 / lado · Pull horizontal</div>
+            <div class="ex-tags"><span class="tag">CT 4.5</span><span class="tag">IM 7.5</span><span class="tag">DN 5.5</span><span class="tag">FC 0.65</span></div>
+          </div>
+          <div class="ex-chevron">›</div>
+        </div>
+        <div class="series-tbl" style="display:none">
+          <div class="stbl-head"><div class="stbl-lbl">Série</div><div class="stbl-lbl">Reps</div><div class="stbl-lbl">Descanso</div><div class="stbl-lbl">Zona</div></div>
+          <div class="serie-row"><div class="s-num">1</div><div class="s-val">10–12/L</div><div class="s-val">60s</div><div class="s-val">Hiper.</div></div>
+          <div class="serie-row"><div class="s-num">2</div><div class="s-val">10–12/L</div><div class="s-val">60s</div><div class="s-val">Hiper.</div></div>
+          <div class="serie-row"><div class="s-num">3</div><div class="s-val">10–12/L</div><div class="s-val">60s</div><div class="s-val">Hiper.</div></div>
+        </div>
+        <div class="insight insight-leigo" style="display:none">
+          <div class="insight-label leigo">Em outras palavras</div>
+          Fazer um lado de cada vez detecta diferenças entre esquerda e direita — comum em quem joga futebol, que usa muito mais um lado.
+        </div>
+      </div>
+
+      <!-- Ex 5 -->
+      <div class="ex-card" id="exA5">
+        <div class="ex-card-hdr" onclick="toggleEx('exA5')">
+          <div class="ex-num">5</div>
+          <div class="ex-meta">
+            <div class="ex-card-name">🤸 Face Pull</div>
+            <div class="ex-card-pre">3 × 15 · Saúde de ombro · Pré-hab</div>
+            <div class="ex-tags"><span class="tag tag-slate">Prevenção</span><span class="tag">CT 3.0</span><span class="tag">IM 2.5</span></div>
+          </div>
+          <div class="ex-chevron">›</div>
+        </div>
+        <div class="insight insight-tech" style="display:none">
+          <div class="insight-label tech">Técnico</div>
+          Equilibra o volume de empurrada ativando deltóide posterior e manguito rotador. Essencial para evitar síndrome de impacto com o acúmulo de push horizontal e vertical da divisão.
+        </div>
+        <div class="insight insight-leigo" style="display:none">
+          <div class="insight-label leigo">Em outras palavras</div>
+          Toda vez que você treina peito ou ombro "empurrando", o ombro fica desequilibrado se não compensar. O Face Pull é essa compensação — protege a articulação a longo prazo.
+        </div>
+      </div>
+
+      <!-- Ex 6 -->
+      <div class="ex-card" id="exA6">
+        <div class="ex-card-hdr" onclick="toggleEx('exA6')">
+          <div class="ex-num">6</div>
+          <div class="ex-meta">
+            <div class="ex-card-name">⬛ Pallof Press</div>
+            <div class="ex-card-pre">3 × 12 / lado · Core anti-rotação</div>
+            <div class="ex-tags"><span class="tag tag-grass">⚽ Específico</span><span class="tag">CT 3.5</span><span class="tag">IM 5.0</span></div>
+          </div>
+          <div class="ex-chevron">›</div>
+        </div>
+        <div class="insight insight-tech" style="display:none">
+          <div class="insight-label tech">Técnico</div>
+          Trabalho de anti-rotação lombo-pélvica. A polia cria um torque lateral que o core resiste isometricamente. Alta especificidade para futebol — chutes, giros e desacelerações exigem essa estabilidade.
+        </div>
+        <div class="insight insight-leigo" style="display:none">
+          <div class="insight-label leigo">Em outras palavras</div>
+          No futebol, o seu core está sempre resistindo a forças laterais — na hora de girar, chutar ou desacelerar. O Pallof Press treina exatamente isso, não é um abdominal comum.
+        </div>
+      </div>
+
+      <!-- Ex 7 -->
+      <div class="ex-card" id="exA7">
+        <div class="ex-card-hdr" onclick="toggleEx('exA7')">
+          <div class="ex-num">7</div>
+          <div class="ex-meta">
+            <div class="ex-card-name">⬛ Dead Bug</div>
+            <div class="ex-card-pre">3 × 8 / lado · Estabilização contralateral</div>
+            <div class="ex-tags"><span class="tag tag-grass">⚽ Específico</span><span class="tag">CT 4.0</span></div>
+          </div>
+          <div class="ex-chevron">›</div>
+        </div>
+        <div class="insight insight-leigo" style="display:none">
+          <div class="insight-label leigo">Em outras palavras</div>
+          Enquanto o futebol exige que braços e pernas trabalhem em diagonal (braço esquerdo com perna direita e vice-versa), o Dead Bug treina exatamente essa coordenação de forma controlada.
+        </div>
+      </div>
+    </div>
+
+    <!-- DIVISÃO B -->
+    <div class="div-content" id="div-1">
+      <div style="padding:0 20px 12px">
+        <div class="kicker">Divisão B · Quinta</div>
+        <div style="font-family:'Cormorant Garamond',serif;font-style:italic;font-size:20px;color:var(--gold);margin-bottom:4px;">Inferior + Pliometria Intro</div>
+        <div style="font-size:9px;color:var(--ink2);line-height:1.7;">9 exercícios · ~60–70 min · wN=0.50 · wM=0.30 · wMet=0.20</div>
+        <div style="font-size:8px;color:var(--ink3);margin-top:4px;">48h após futebol quarta · 48h antes do sábado. Janela mais segura da semana.</div>
+      </div>
+
+      <!-- Ex 1 KB Swing -->
+      <div class="ex-card" id="exB1">
+        <div class="ex-card-hdr" onclick="toggleEx('exB1')">
+          <div class="ex-num">1</div>
+          <div class="ex-meta">
+            <div class="ex-card-name">⚡ Kettlebell Swing</div>
+            <div class="ex-card-pre">3 × 10 · Aquecimento neural · Ativação quadril</div>
+            <div class="ex-tags"><span class="tag">CT 5.0</span><span class="tag">SV 8.0</span><span class="tag tag-gold">Aquecimento</span></div>
+          </div>
+          <div class="ex-chevron">›</div>
+        </div>
+        <div class="insight insight-tech" style="display:none">
+          <div class="insight-label tech">Técnico</div>
+          Não é aquecimento "leve" — é ativação específica de potência de dobradiça. SV 8.0 com carga baixa acorda o SNC para o padrão de hinge que virá no Stiff e no Nordic. Elimina a necessidade de aquecimento específico separado.
+        </div>
+        <div class="insight insight-leigo" style="display:none">
+          <div class="insight-label leigo">Em outras palavras</div>
+          Antes de fazer exercícios pesados de traseiro de coxa e glúteo, o Swing "acende" esses músculos com um movimento explosivo e seguro. É um aquecimento que já é um treino.
+        </div>
+      </div>
+
+      <!-- Ex 2 Agachamento -->
+      <div class="ex-card" id="exB2">
+        <div class="ex-card-hdr" onclick="toggleEx('exB2')">
+          <div class="ex-num">2</div>
+          <div class="ex-meta">
+            <div class="ex-card-name">🏋️ Agachamento Livre</div>
+            <div class="ex-card-pre">4 × 5 · Força base · Baixo volume intencional</div>
+            <div class="ex-tags"><span class="tag">CT 6.0</span><span class="tag">IM 9.0</span><span class="tag">DN 8.0</span><span class="tag">FC 1.2</span></div>
+          </div>
+          <div class="ex-chevron">›</div>
+        </div>
+        <div class="coef-strip" style="display:none">
+          <div class="coef-item coef-neural"><div class="coef-lbl">Neural</div><div class="coef-bar-wrap"><div class="coef-bar" style="width:80%"></div></div><div class="coef-val">8.0</div></div>
+          <div class="coef-item coef-mec"><div class="coef-lbl">Mec.</div><div class="coef-bar-wrap"><div class="coef-bar" style="width:90%"></div></div><div class="coef-val">9.0</div></div>
+          <div class="coef-item coef-met"><div class="coef-lbl">Met.</div><div class="coef-bar-wrap"><div class="coef-bar" style="width:50%"></div></div><div class="coef-val">5.0</div></div>
+        </div>
+        <div class="series-tbl" style="display:none">
+          <div class="stbl-head"><div class="stbl-lbl">Série</div><div class="stbl-lbl">Reps</div><div class="stbl-lbl">Descanso</div><div class="stbl-lbl">Zona</div></div>
+          <div class="serie-row"><div class="s-num">1</div><div class="s-val">5</div><div class="s-val">2min</div><div class="s-val">Força</div></div>
+          <div class="serie-row"><div class="s-num">2</div><div class="s-val">5</div><div class="s-val">2min</div><div class="s-val">Força</div></div>
+          <div class="serie-row"><div class="s-num">3</div><div class="s-val">5</div><div class="s-val">2min</div><div class="s-val">Força</div></div>
+          <div class="serie-row"><div class="s-num">4</div><div class="s-val">5</div><div class="s-val">2min</div><div class="s-val">Força</div></div>
+        </div>
+        <div class="insight insight-tech" style="display:none">
+          <div class="insight-label tech">Técnico</div>
+          4×5 em zona de força (≥75% 1RM). Baixo volume intencional — o futebol já entrega volume metabólico de inferiores. O objetivo aqui é adaptação neural e fortalecimento de tendões, não acúmulo de volume muscular. FC 1.2 é o maior do banco.
+        </div>
+        <div class="insight insight-leigo" style="display:none">
+          <div class="insight-label leigo">Em outras palavras</div>
+          Só 5 repetições parece pouco — e é mesmo. Mas é de propósito: no futebol suas pernas já trabalham muito. O agachamento aqui serve para torná-las mais fortes, não maiores. 5 reps pesadas treinam força; 12 reps treinam volume. São objetivos diferentes.
+        </div>
+      </div>
+
+      <!-- Ex 3 Stiff -->
+      <div class="ex-card" id="exB3">
+        <div class="ex-card-hdr" onclick="toggleEx('exB3')">
+          <div class="ex-num">3</div>
+          <div class="ex-meta">
+            <div class="ex-card-name">🔩 Stiff / RDL</div>
+            <div class="ex-card-pre">3 × 8 · Cadeia posterior em comprimento</div>
+            <div class="ex-tags"><span class="tag">CT 5.0</span><span class="tag">IM 8.5</span><span class="tag">DN 7.0</span></div>
+          </div>
+          <div class="ex-chevron">›</div>
+        </div>
+        <div class="series-tbl" style="display:none">
+          <div class="stbl-head"><div class="stbl-lbl">Série</div><div class="stbl-lbl">Reps</div><div class="stbl-lbl">Descanso</div><div class="stbl-lbl">Zona</div></div>
+          <div class="serie-row"><div class="s-num">1</div><div class="s-val">8</div><div class="s-val">90s</div><div class="s-val">Hiper.</div></div>
+          <div class="serie-row"><div class="s-num">2</div><div class="s-val">8</div><div class="s-val">90s</div><div class="s-val">Hiper.</div></div>
+          <div class="serie-row"><div class="s-num">3</div><div class="s-val">8</div><div class="s-val">90s</div><div class="s-val">Hiper.</div></div>
+        </div>
+        <div class="insight insight-leigo" style="display:none">
+          <div class="insight-label leigo">Em outras palavras</div>
+          O Stiff trabalha o traseiro de coxa em alongamento máximo — diferente do futebol, onde o músculo trabalha mais encurtado (na hora de chutar). Esse contraste é exatamente o que protege contra lesão de isquiotibial.
+        </div>
+      </div>
+
+      <!-- Ex 4 Nordic -->
+      <div class="ex-card prevention" id="exB4">
+        <div class="ex-card-hdr" onclick="toggleEx('exB4')">
+          <div class="ex-num">4</div>
+          <div class="ex-meta">
+            <div class="ex-card-name">🔩 Nordic Curl</div>
+            <div class="ex-card-pre">3 × 5–8 · Proteção de isquiotibial</div>
+            <div class="ex-tags"><span class="tag tag-grass">⚽ Prioritário</span><span class="tag tag-slate">Prevenção</span><span class="tag">IM 9.5</span></div>
+          </div>
+          <div class="ex-chevron">›</div>
+        </div>
+        <div class="insight insight-tech" style="display:none">
+          <div class="insight-label tech">Técnico</div>
+          IM 9.5 — maior impacto mecânico excêntrico de isquiotibiais disponível no banco. Reduz risco de lesão de isquiotibial em até 50% (literatura). Fortemente associado à prevenção da lesão mais comum no futebol. Começar com reps baixas (5) para adaptar o tendão antes de aumentar volume.
+        </div>
+        <div class="insight insight-leigo" style="display:none">
+          <div class="insight-label leigo">Em outras palavras</div>
+          A lesão de "coxa" no futebol — o "puxão" que tira o jogador por semanas — acontece no traseiro de coxa durante a desaceleração do chute. O Nordic Curl é o exercício mais eficaz que existe para prevenir isso. É difícil, mas é inegociável.
+        </div>
+      </div>
+
+      <!-- Ex 5 Búlgaro -->
+      <div class="ex-card" id="exB5">
+        <div class="ex-card-hdr" onclick="toggleEx('exB5')">
+          <div class="ex-num">5</div>
+          <div class="ex-meta">
+            <div class="ex-card-name">🦵 Afundo Búlgaro</div>
+            <div class="ex-card-pre">3 × 8 / lado · Unilateral · Estabilidade de quadril</div>
+            <div class="ex-tags"><span class="tag tag-grass">⚽ Específico</span><span class="tag">CT 5.5</span><span class="tag">IM 8.0</span></div>
+          </div>
+          <div class="ex-chevron">›</div>
+        </div>
+        <div class="insight insight-tech" style="display:none">
+          <div class="insight-label tech">Técnico</div>
+          Padrão unilateral com pé traseiro elevado. Alta demanda de estabilização de quadril e joelho que a maioria dos exercícios bilaterais não captura. Detecta assimetrias entre perna dominante e não-dominante — crítico para jogadores de futebol.
+        </div>
+        <div class="insight insight-leigo" style="display:none">
+          <div class="insight-label leigo">Em outras palavras</div>
+          No futebol você raramente usa as duas pernas juntas ao mesmo tempo — é tudo unilateral. O Búlgaro treina cada perna separado, o que revela e corrige diferenças de força que poderiam virar lesão.
+        </div>
+      </div>
+
+      <!-- Ex 6 Hip Thrust Explosivo -->
+      <div class="ex-card plyo" id="exB6">
+        <div class="ex-card-hdr" onclick="toggleEx('exB6')">
+          <div class="ex-num">6</div>
+          <div class="ex-meta">
+            <div class="ex-card-name">⚡ Hip Thrust Explosivo</div>
+            <div class="ex-card-pre">3 × 8 · Potência de extensão de quadril</div>
+            <div class="ex-tags"><span class="tag tag-grass">⚽ Sprint</span><span class="tag">SV 8.0</span><span class="tag">explos</span></div>
+          </div>
+          <div class="ex-chevron">›</div>
+        </div>
+        <div class="insight insight-tech" style="display:none">
+          <div class="insight-label tech">Técnico</div>
+          Potência de extensão de quadril em padrão de hinge sem componente de squat. SV 8.0 com explos=true. A extensão explosiva de quadril é o motor primário do sprint — transferência direta.
+        </div>
+        <div class="insight insight-leigo" style="display:none">
+          <div class="insight-label leigo">Em outras palavras</div>
+          Cada sprint começa com uma extensão explosiva de quadril. O Hip Thrust Explosivo treina exatamente esse movimento — mas de forma controlada, em segurança, com carga progressiva.
+        </div>
+      </div>
+
+      <!-- Ex 7 Adutora -->
+      <div class="ex-card prevention" id="exB7">
+        <div class="ex-card-hdr" onclick="toggleEx('exB7')">
+          <div class="ex-num">7</div>
+          <div class="ex-meta">
+            <div class="ex-card-name">🦵 Adutora</div>
+            <div class="ex-card-pre">2 × 15 · Prevenção de pubalgia</div>
+            <div class="ex-tags"><span class="tag tag-slate">Prevenção</span><span class="tag">CT 1.5</span><span class="tag">IM 1.5</span></div>
+          </div>
+          <div class="ex-chevron">›</div>
+        </div>
+        <div class="insight insight-leigo" style="display:none">
+          <div class="insight-label leigo">Em outras palavras</div>
+          A pubalgia — aquela dor na virilha que afasta jogadores — está muito ligada à fraqueza dos adutores. Este exercício simples, feito com constância, é proteção preventiva. Dois sets bastam — não precisa de muito.
+        </div>
+      </div>
+
+      <!-- Ex 8 Box Jump -->
+      <div class="ex-card plyo" id="exB8">
+        <div class="ex-card-hdr" onclick="toggleEx('exB8')">
+          <div class="ex-num">8</div>
+          <div class="ex-meta">
+            <div class="ex-card-name">⚡ Box Jump / Broad Jump</div>
+            <div class="ex-card-pre">3 × 3–5 · Pliometria · Qualidade máxima</div>
+            <div class="ex-tags"><span class="tag tag-gold">Plyo S1–S2</span><span class="tag">SV 9.0</span><span class="tag">explos</span></div>
+          </div>
+          <div class="ex-chevron">›</div>
+        </div>
+        <div class="insight insight-tech" style="display:none">
+          <div class="insight-label tech">Técnico</div>
+          Volume intencionalmente baixo (3–5 reps). Pliometria é sobre qualidade de intenção, não quantidade. SV 9.0 — máxima pontuação de velocidade do banco. S1–S2: Box Jump (vertical). S3: Broad Jump (horizontal, mais específico para sprints).
+        </div>
+        <div class="insight insight-leigo" style="display:none">
+          <div class="insight-label leigo">Em outras palavras</div>
+          3 saltos com 100% de intenção valem mais que 10 saltos cansados. Pliometria não é sobre transpirecer — é sobre treinar o sistema nervoso a produzir força rápido. Menos é mais aqui.
+        </div>
+      </div>
+
+      <!-- Ex 9 Panturrilha -->
+      <div class="ex-card" id="exB9">
+        <div class="ex-card-hdr" onclick="toggleEx('exB9')">
+          <div class="ex-num">9</div>
+          <div class="ex-meta">
+            <div class="ex-card-name">🦶 Panturrilha em Pé</div>
+            <div class="ex-card-pre">3 × 15 · Base tendinosa · Gastrocnêmio</div>
+            <div class="ex-tags"><span class="tag tag-slate">Prevenção</span><span class="tag">CT 1.5</span></div>
+          </div>
+          <div class="ex-chevron">›</div>
+        </div>
+        <div class="insight insight-leigo" style="display:none">
+          <div class="insight-label leigo">Em outras palavras</div>
+          Tendinite de Aquiles e entorse de tornozelo são as lesões mais comuns no futebol. Fortalecer panturrilha de forma progressiva protege o tendão. Simples, mas muito importante no início do ciclo.
+        </div>
+      </div>
+    </div>
+
+    <!-- DIVISÃO A₂ -->
+    <div class="div-content" id="div-2">
+      <div style="padding:0 20px 12px">
+        <div class="kicker">Divisão A₂ · Sexta</div>
+        <div style="font-family:'Cormorant Garamond',serif;font-style:italic;font-size:20px;color:var(--gold);margin-bottom:4px;">Superior · Volume &amp; Acessórios</div>
+        <div style="font-size:9px;color:var(--ink2);line-height:1.7;">7 exercícios · ~50–60 min · wN=0.25 · wM=0.40 · wMet=0.35</div>
+        <div style="font-size:8px;color:var(--ink3);margin-top:4px;">Volume alinhado à Div A. Exercícios complementares — fecham os padrões da semana.</div>
+      </div>
+
+      <!-- Ex 1 Supino Reto -->
+      <div class="ex-card" id="exA2_1">
+        <div class="ex-card-hdr" onclick="toggleEx('exA2_1')">
+          <div class="ex-num">1</div>
+          <div class="ex-meta">
+            <div class="ex-card-name">💪 Supino Reto (Barra)</div>
+            <div class="ex-card-pre">4 × 10–12 · Push horizontal · Volume</div>
+            <div class="ex-tags"><span class="tag">CT 4.0</span><span class="tag">IM 6.5</span><span class="tag">DN 5.5</span></div>
+          </div>
+          <div class="ex-chevron">›</div>
+        </div>
+        <div class="series-tbl" style="display:none">
+          <div class="stbl-head"><div class="stbl-lbl">Série</div><div class="stbl-lbl">Reps</div><div class="stbl-lbl">Descanso</div><div class="stbl-lbl">Zona</div></div>
+          <div class="serie-row"><div class="s-num">1</div><div class="s-val">10–12</div><div class="s-val">75s</div><div class="s-val">Hiper.</div></div>
+          <div class="serie-row"><div class="s-num">2</div><div class="s-val">10–12</div><div class="s-val">75s</div><div class="s-val">Hiper.</div></div>
+          <div class="serie-row"><div class="s-num">3</div><div class="s-val">10–12</div><div class="s-val">75s</div><div class="s-val">Hiper.</div></div>
+          <div class="serie-row"><div class="s-num">4</div><div class="s-val">10–12</div><div class="s-val">75s</div><div class="s-val">Hiper.</div></div>
+        </div>
+        <div class="insight insight-leigo" style="display:none">
+          <div class="insight-label leigo">Em outras palavras</div>
+          Mesma família do Supino c/ Halteres da terça — mas com barra, zona de repetições mais alta. Sexta é dia de volume, não intensidade. Você já esteve na academia na terça; agora é consolidar o trabalho.
+        </div>
+      </div>
+
+      <!-- Ex 2 Puxada Frontal -->
+      <div class="ex-card" id="exA2_2">
+        <div class="ex-card-hdr" onclick="toggleEx('exA2_2')">
+          <div class="ex-num">2</div>
+          <div class="ex-meta">
+            <div class="ex-card-name">🏋️ Puxada Frontal</div>
+            <div class="ex-card-pre">4 × 10–12 · Pull vertical · Volume</div>
+            <div class="ex-tags"><span class="tag">CT 3.5</span><span class="tag">IM 5.5</span><span class="tag">DN 5.0</span></div>
+          </div>
+          <div class="ex-chevron">›</div>
+        </div>
+        <div class="series-tbl" style="display:none">
+          <div class="stbl-head"><div class="stbl-lbl">Série</div><div class="stbl-lbl">Reps</div><div class="stbl-lbl">Descanso</div><div class="stbl-lbl">Zona</div></div>
+          <div class="serie-row"><div class="s-num">1</div><div class="s-val">10–12</div><div class="s-val">75s</div><div class="s-val">Hiper.</div></div>
+          <div class="serie-row"><div class="s-num">2</div><div class="s-val">10–12</div><div class="s-val">75s</div><div class="s-val">Hiper.</div></div>
+          <div class="serie-row"><div class="s-num">3</div><div class="s-val">10–12</div><div class="s-val">75s</div><div class="s-val">Hiper.</div></div>
+          <div class="serie-row"><div class="s-num">4</div><div class="s-val">10–12</div><div class="s-val">75s</div><div class="s-val">Hiper.</div></div>
+        </div>
+        <div class="insight insight-leigo" style="display:none">
+          <div class="insight-label leigo">Em outras palavras</div>
+          Complementa a Barra Fixa da terça. Com cargas ajustáveis, você pode trabalhar no volume exato que o treino pede — sem depender do peso corporal.
+        </div>
+      </div>
+
+      <!-- Ex 3 Desenv Máquina -->
+      <div class="ex-card" id="exA2_3">
+        <div class="ex-card-hdr" onclick="toggleEx('exA2_3')">
+          <div class="ex-num">3</div>
+          <div class="ex-meta">
+            <div class="ex-card-name">🏋️ Desenvolvimento Máquina</div>
+            <div class="ex-card-pre">3 × 12–15 · Ombro · Volume</div>
+            <div class="ex-tags"><span class="tag">CT 2.5</span><span class="tag">IM 5.0</span><span class="tag">FC 0.50</span></div>
+          </div>
+          <div class="ex-chevron">›</div>
+        </div>
+        <div class="insight insight-leigo" style="display:none">
+          <div class="insight-label leigo">Em outras palavras</div>
+          A máquina permite focar no esforço do músculo sem gastar energia coordenando o movimento. Na sexta, quando você já está com um acúmulo de semana, isso é vantagem.
+        </div>
+      </div>
+
+      <!-- Ex 4 Remada Polia -->
+      <div class="ex-card" id="exA2_4">
+        <div class="ex-card-hdr" onclick="toggleEx('exA2_4')">
+          <div class="ex-num">4</div>
+          <div class="ex-meta">
+            <div class="ex-card-name">🏋️ Remada Polia Baixa</div>
+            <div class="ex-card-pre">3 × 12–15 · Pull horizontal · Volume</div>
+            <div class="ex-tags"><span class="tag">CT 3.5</span><span class="tag">IM 5.5</span><span class="tag">DN 4.5</span></div>
+          </div>
+          <div class="ex-chevron">›</div>
+        </div>
+        <div class="insight insight-leigo" style="display:none">
+          <div class="insight-label leigo">Em outras palavras</div>
+          Tensão constante durante todo o movimento graças à polia. Ótimo para trabalho de costas em volume — complementa a Remada Unilateral da terça.
+        </div>
+      </div>
+
+      <!-- Ex 5 Elev Lateral -->
+      <div class="ex-card" id="exA2_5">
+        <div class="ex-card-hdr" onclick="toggleEx('exA2_5')">
+          <div class="ex-num">5</div>
+          <div class="ex-meta">
+            <div class="ex-card-name">🤸 Elevação Lateral</div>
+            <div class="ex-card-pre">3 × 15 · Deltóide medial · Acabamento</div>
+            <div class="ex-tags"><span class="tag">CT 3.0</span><span class="tag">IM 2.0</span></div>
+          </div>
+          <div class="ex-chevron">›</div>
+        </div>
+      </div>
+
+      <!-- Ex 6 Tríceps Pulley -->
+      <div class="ex-card" id="exA2_6">
+        <div class="ex-card-hdr" onclick="toggleEx('exA2_6')">
+          <div class="ex-num">6</div>
+          <div class="ex-meta">
+            <div class="ex-card-name">💪 Tríceps Pulley</div>
+            <div class="ex-card-pre">3 × 15 · Isolamento · Acabamento</div>
+            <div class="ex-tags"><span class="tag">CT 2.0</span><span class="tag">IM 2.0</span></div>
+          </div>
+          <div class="ex-chevron">›</div>
+        </div>
+      </div>
+
+      <!-- Ex 7 Rosca Direta -->
+      <div class="ex-card" id="exA2_7">
+        <div class="ex-card-hdr" onclick="toggleEx('exA2_7')">
+          <div class="ex-num">7</div>
+          <div class="ex-meta">
+            <div class="ex-card-name">💪 Rosca Direta</div>
+            <div class="ex-card-pre">3 × 12 · Bíceps · Acabamento</div>
+            <div class="ex-tags"><span class="tag">CT 2.5</span><span class="tag">IM 2.5</span></div>
+          </div>
+          <div class="ex-chevron">›</div>
+        </div>
+        <div class="insight insight-leigo" style="display:none">
+          <div class="insight-label leigo">Em outras palavras</div>
+          Bíceps, ombro medial e tríceps são os "acessórios" da sexta — completam o trabalho de superiores da semana sem gerar fadiga excessiva antes do futebol de sábado.
+        </div>
+      </div>
+    </div>
+
+    <div class="scroll-spacer"></div>
+  </div>
+  <nav class="bnav">
+    <button class="bnav-item" onclick="goPage('home')"><span class="bnav-icon">🏠</span>Hoje</button>
+    <button class="bnav-item active" onclick="goPage('treinos')"><span class="bnav-icon">💪</span>Treinos</button>
+    <button class="bnav-item" onclick="goPage('meso')"><span class="bnav-icon">📅</span>Ciclo</button>
+    <button class="bnav-item" onclick="goPage('analise')"><span class="bnav-icon">📊</span>Análise</button>
+  </nav>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     MESOCICLO
+═══════════════════════════════════════════════════════ -->
+<div class="screen" id="s-meso">
+  <div class="topbar">
+    <div class="tb-back" onclick="goPage('home')">←</div>
+    <div class="tb-title">Mesociclo 1</div>
+    <div class="tb-right">4S</div>
+  </div>
+  <div class="sbody" style="padding-top:0">
+    <div style="height:20px"></div>
+
+    <!-- MESO OVERVIEW -->
+    <div class="sec">
+      <div class="sec-head"><div class="sec-title">Visão Geral</div><div class="sec-line"></div></div>
+      <div class="card" style="padding:14px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">
+          <div>
+            <div style="font-family:'Cormorant Garamond',serif;font-style:italic;font-size:18px;color:var(--gold);margin-bottom:3px;">GPP Futebol · Block I</div>
+            <div style="font-size:8px;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em">Modelo: Block · 4 semanas</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-family:'Cormorant Garamond',serif;font-style:italic;font-size:24px;color:var(--gold)">S1</div>
+            <div style="font-size:8px;color:var(--ink3)">atual</div>
+          </div>
+        </div>
+        <div style="height:4px;background:var(--b);border-radius:2px;overflow:hidden;margin-bottom:14px">
+          <div style="height:100%;width:25%;background:linear-gradient(90deg,var(--copper),var(--gold));border-radius:2px;"></div>
+        </div>
+        <div style="display:flex;gap:5px">
+          <div style="flex:1;padding:8px 4px;background:rgba(138,96,48,.1);border:1px solid rgba(138,96,48,.35);border-radius:2px;text-align:center">
+            <div style="font-size:7px;color:var(--copper2);text-transform:uppercase;letter-spacing:.08em">S1</div>
+            <div style="font-size:9px;color:var(--copper2);margin-top:3px;">→</div>
+          </div>
+          <div style="flex:1;padding:8px 4px;background:var(--night3);border:1px solid var(--b);border-radius:2px;text-align:center;opacity:.6">
+            <div style="font-size:7px;color:var(--ink3);text-transform:uppercase;letter-spacing:.08em">S2</div>
+            <div style="font-size:9px;color:var(--ink3);margin-top:3px;">—</div>
+          </div>
+          <div style="flex:1;padding:8px 4px;background:var(--night3);border:1px solid var(--b);border-radius:2px;text-align:center;opacity:.5">
+            <div style="font-size:7px;color:var(--ink3);text-transform:uppercase;letter-spacing:.08em">S3</div>
+            <div style="font-size:9px;color:var(--ink3);margin-top:3px;">—</div>
+          </div>
+          <div style="flex:1;padding:8px 4px;background:rgba(46,80,96,.08);border:1px solid rgba(58,104,120,.2);border-radius:2px;text-align:center;opacity:.45">
+            <div style="font-size:7px;color:var(--slate2);text-transform:uppercase;letter-spacing:.08em">S4</div>
+            <div style="font-size:9px;color:var(--slate2);margin-top:3px;">↓</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TABELA DE PROGRESSÃO -->
+    <div class="sec">
+      <div class="sec-head"><div class="sec-title">Progressão por Semana</div><div class="sec-line"></div></div>
+      <div class="card" style="overflow:hidden">
+        <table class="prog-table">
+          <thead>
+            <tr><th>Sem.</th><th>Caráter</th><th>Agach.</th><th>Nordic</th><th>Plyo</th></tr>
+          </thead>
+          <tbody>
+            <tr class="sem-atual">
+              <td><strong>S1</strong></td>
+              <td><span class="sem-badge acum">Acumul.</span></td>
+              <td>4×5 ~70%</td>
+              <td>3×5</td>
+              <td>3×3 Box</td>
+            </tr>
+            <tr>
+              <td>S2</td>
+              <td><span class="sem-badge acum">Acumul.+</span></td>
+              <td>4×5 ~75%</td>
+              <td>3×6</td>
+              <td>3×4 Box</td>
+            </tr>
+            <tr>
+              <td>S3</td>
+              <td><span class="sem-badge intens">Intens.</span></td>
+              <td>3×4 ~80%</td>
+              <td>3×8</td>
+              <td>3×5 Broad</td>
+            </tr>
+            <tr class="sem-deload">
+              <td>S4</td>
+              <td><span class="sem-badge deload">Deload</span></td>
+              <td>2×3 ~65%</td>
+              <td>2×4</td>
+              <td>2×3</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- PROGRESSÃO SUPERIORES -->
+    <div class="sec">
+      <div class="sec-head"><div class="sec-title">Superiores · Progressão Linear</div><div class="sec-line"></div></div>
+      <div class="card" style="padding:14px">
+        <div style="font-size:9px;color:var(--ink2);line-height:1.8">
+          Divisões A e A₂ seguem <strong style="color:var(--ink)">progressão linear simples</strong>: aumenta carga quando completar todas as reps com PSE ≤ alvo.<br><br>
+          <span style="color:var(--copper2)">Div A (Terça):</span> Supino, Barra Fixa, Desenv. Halt. — progressão primária de força.<br>
+          <span style="color:var(--copper2)">Div A₂ (Sexta):</span> Volume complementar — carga acompanha ~85% da terça.
+        </div>
+        <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--b);font-size:8px;color:var(--ink3)">
+          ⟶ Sistema sugere progressão após PSE das últimas 2 sessões do mesmo padrão abaixo de 6.0.
+        </div>
+      </div>
+    </div>
+
+    <!-- CARGA INTERNA CHART (será populado no CP3) -->
+    <div class="sec">
+      <div class="sec-head"><div class="sec-title">Carga Interna Semanal</div><div class="sec-line"></div></div>
+      <div class="chart-card">
+        <div class="chart-legend">
+          <div class="legend-item"><div class="legend-dot" style="background:linear-gradient(90deg,var(--copper),var(--gold))"></div>Academia</div>
+          <div class="legend-item"><div class="legend-dot" style="background:linear-gradient(90deg,var(--grass2),var(--grass3))"></div>Futebol (estimado)</div>
+          <div class="legend-item"><div class="legend-dot" style="background:rgba(46,80,96,.6);border:1px solid var(--slate)"></div>Deload</div>
+        </div>
+        <svg id="ci-chart" width="100%" height="120" viewBox="0 0 340 120" preserveAspectRatio="none" style="display:block"></svg>
+        <div style="font-size:8px;color:var(--ink3);margin-top:8px;line-height:1.7">
+          Estimativa baseada em PSE × duração (Foster). Futebol: PSE ~6.5 × 95 min ≈ 620 UA/sessão.
+        </div>
+      </div>
+    </div>
+
+    <div class="scroll-spacer"></div>
+  </div>
+  <nav class="bnav">
+    <button class="bnav-item" onclick="goPage('home')"><span class="bnav-icon">🏠</span>Hoje</button>
+    <button class="bnav-item" onclick="goPage('treinos')"><span class="bnav-icon">💪</span>Treinos</button>
+    <button class="bnav-item active" onclick="goPage('meso')"><span class="bnav-icon">📅</span>Ciclo</button>
+    <button class="bnav-item" onclick="goPage('analise')"><span class="bnav-icon">📊</span>Análise</button>
+  </nav>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     ANÁLISE
+═══════════════════════════════════════════════════════ -->
+<div class="screen" id="s-analise">
+  <div class="topbar">
+    <div class="tb-back" onclick="goPage('home')">←</div>
+    <div class="tb-title">Análise</div>
+    <div class="tb-right"></div>
+  </div>
+  <div class="sbody" style="padding-top:0">
+    <div style="height:20px"></div>
+
+    <!-- RADAR -->
+    <div class="sec">
+      <div class="sec-head"><div class="sec-title">Perfil de Carga · Radar</div><div class="sec-line"></div></div>
+      <div class="card" style="padding:14px">
+        <div class="radar-wrap">
+          <svg id="radar-svg" viewBox="0 0 220 200" width="220" height="200"></svg>
+        </div>
+        <div style="display:flex;justify-content:center;gap:16px;margin-top:8px">
+          <div class="legend-item"><div class="legend-dot" style="background:var(--neural);border-radius:50%"></div>Neural</div>
+          <div class="legend-item"><div class="legend-dot" style="background:var(--mec);border-radius:50%"></div>Mecânica</div>
+          <div class="legend-item"><div class="legend-dot" style="background:var(--met);border-radius:50%"></div>Metabólica</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DISTRIBUIÇÃO DE COEFICIENTES — CONTEXTO FUTEBOL -->
+    <div class="sec">
+      <div class="sec-head"><div class="sec-title">Por que o radar parece "desequilibrado"</div><div class="sec-line"></div></div>
+      <div class="coef-alert">
+        <div class="coef-alert-title">⚠ Coeficientes absolutos vs perfil do atleta</div>
+        <div class="coef-alert-text">
+          O radar do Lucas vai mostrar Mecânica dominante em Superiores e Neural alto por exercício em Inferiores — mas com CargaNorm total de inferiores muito menor que a dos superiores. Em valores absolutos, <strong style="color:var(--ink)">superiores dominarão o gráfico</strong>.
+          <br><br>
+          Isso não é erro. É exatamente o perfil esperado para um atleta que já treina pernas no esporte.
+        </div>
+        <div class="coef-alert-leigo">
+          <div class="coef-alert-leigo-lbl">⚽ Para o Lucas</div>
+          <div class="coef-alert-leigo-text">
+            Suas pernas já trabalham muito no futebol — sprints, dribles, chutes e frenagens. O Momentum completa o que o futebol não te dá: força e massa nos braços, ombros e costas. Por isso o treino de perna tem poucas séries mas exercícios muito específicos. O gráfico "desequilibrado" é o correto para quem joga bola.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TABELA DE PESOS -->
+    <div class="sec">
+      <div class="sec-head"><div class="sec-title">Pesos por Divisão (wN · wM · wMet)</div><div class="sec-line"></div></div>
+      <div class="card" style="overflow:hidden">
+        <table class="weights-table">
+          <thead>
+            <tr><th>Divisão</th><th>wN</th><th>wM</th><th>wMet</th><th>Dominância</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>A · Superior Ter</td><td>0.25</td><td>0.45</td><td>0.30</td>
+              <td style="color:var(--mec);font-size:8px">Mecânica</td>
+            </tr>
+            <tr>
+              <td>A₂ · Superior Sex</td><td>0.25</td><td>0.40</td><td>0.35</td>
+              <td style="color:var(--mec);font-size:8px">Mecânica</td>
+            </tr>
+            <tr>
+              <td>B · Inferior Qui</td><td>0.50</td><td>0.30</td><td>0.20</td>
+              <td style="color:var(--neural);font-size:8px">Neural</td>
+            </tr>
+          </tbody>
+        </table>
+        <div style="padding:10px 14px;font-size:8px;color:var(--ink3);line-height:1.7;border-top:1px solid var(--b)">
+          Divisão B tem wN alto porque agachamento, Nordic e pliometria têm custo neural elevado (DN/FC altos) — mesmo com poucas séries. A CargaObjetiva por série é alta; o volume total é baixo por escolha.
+        </div>
+      </div>
+    </div>
+
+    <!-- EXERCÍCIOS A ADICIONAR -->
+    <div class="sec">
+      <div class="sec-head"><div class="sec-title">Exercícios a Adicionar ao Banco</div><div class="sec-line"></div></div>
+      <div class="add-list">
+        <div class="add-item priority-high">
+          <div class="add-prio">🔴</div>
+          <div class="add-info">
+            <div class="add-name">Copenhagen Adductor</div>
+            <div class="add-reason">Prevenção de pubalgia — o exercício mais específico para adutores dinâmicos em futebol. Muito mais efetivo que a Adutora na máquina. Não existe no banco atual.</div>
+          </div>
+        </div>
+        <div class="add-item priority-high">
+          <div class="add-prio">🔴</div>
+          <div class="add-info">
+            <div class="add-name">Terra Unipodal (Single-leg RDL)</div>
+            <div class="add-reason">Padrão fundamental de estabilidade de quadril e isquio unilateral. Alta especificidade para corrida e desaceleração. Ausente do banco.</div>
+          </div>
+        </div>
+        <div class="add-item priority-med">
+          <div class="add-prio">🟡</div>
+          <div class="add-info">
+            <div class="add-name">Side Plank</div>
+            <div class="add-reason">Core lateral — estabilização lombo-pélvica. Complementa o Pallof Press com padrão isométrico unilateral.</div>
+          </div>
+        </div>
+        <div class="add-item priority-med">
+          <div class="add-prio">🟡</div>
+          <div class="add-info">
+            <div class="add-name">Isometria de Isquiotibial (90-90 bridge)</div>
+            <div class="add-reason">Ativação isolada de isquio antes de progredir para o Nordic completo. Útil nas primeiras semanas para adaptar o tendão.</div>
+          </div>
+        </div>
+        <div class="add-item priority-med">
+          <div class="add-prio">🟡</div>
+          <div class="add-info">
+            <div class="add-name">Tibial Raise</div>
+            <div class="add-reason">Saúde do tornozelo e prevenção de canelite — comum em jogadores de futebol que correm muito em superfícies duras.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="scroll-spacer"></div>
+  </div>
+  <nav class="bnav">
+    <button class="bnav-item" onclick="goPage('home')"><span class="bnav-icon">🏠</span>Hoje</button>
+    <button class="bnav-item" onclick="goPage('treinos')"><span class="bnav-icon">💪</span>Treinos</button>
+    <button class="bnav-item" onclick="goPage('meso')"><span class="bnav-icon">📅</span>Ciclo</button>
+    <button class="bnav-item active" onclick="goPage('analise')"><span class="bnav-icon">📊</span>Análise</button>
+  </nav>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     JAVASCRIPT
+════════════════════════════════════════════════════════ -->
+<script>
+/* ── NAVIGATION ────────────────────────────────────── */
+const screens = {home:'s-home',treinos:'s-treinos',meso:'s-meso',analise:'s-analise'};
+let current = 'home';
+
+function goPage(page){
+  const prev = document.getElementById(screens[current]);
+  const next = document.getElementById(screens[page]);
+  prev.classList.add('exit-left');
+  prev.classList.remove('active');
+  setTimeout(()=>prev.classList.remove('exit-left'),300);
+  next.classList.add('active');
+  current = page;
+  // draw charts on first visit
+  if(page==='meso' && !window.ciDrawn){drawCI();window.ciDrawn=true;}
+  if(page==='analise' && !window.radarDrawn){drawRadar();window.radarDrawn=true;}
+}
+
+/* ── EXERCISE TOGGLE ───────────────────────────────── */
+function toggleEx(id){
+  const card = document.getElementById(id);
+  card.classList.toggle('open');
+  const hiders = card.querySelectorAll('.coef-strip,.series-tbl,.insight');
+  const isOpen = card.classList.contains('open');
+  hiders.forEach(el => el.style.display = isOpen ? 'flex' : 'none');
+  // series table needs block not flex
+  const tbl = card.querySelector('.series-tbl');
+  if(tbl && isOpen) tbl.style.display = 'block';
+}
+
+/* ── DIV TABS ──────────────────────────────────────── */
+function showDiv(idx, btn){
+  document.querySelectorAll('.div-tab').forEach((t,i)=>t.classList.toggle('active',i===idx));
+  document.querySelectorAll('.div-content').forEach((c,i)=>c.classList.toggle('active',i===idx));
+}
+
+/* ── CI CHART ──────────────────────────────────────── */
+function drawCI(){
+  const svg = document.getElementById('ci-chart');
+  const W=340, H=120, padL=28, padR=8, top=12, bottom=18;
+  const chartH = H - top - bottom;
+
+  // Semana: Seg(ft) Ter(ac) Qua(ft) Qui(ac) Sex(ac) Sáb(ft) Dom(rest)
+  const days  = ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
+  const ft    = [620,  0,   620,   0,   0,   620,   0];
+  const ac    = [0,   280,   0,  240, 220,    0,    0];
+  const maxVal = 700;
+  const nDays = days.length;
+  const bw = (W - padL - padR) / nDays;
+  const bGap = 5;
+
+  let html = '<defs>';
+  html += `<linearGradient id="gft" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0%" stop-color="#52a038" stop-opacity=".85"/>
+    <stop offset="100%" stop-color="#2d5a1b" stop-opacity=".6"/>
+  </linearGradient>`;
+  html += `<linearGradient id="gac" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0%" stop-color="#ddb870" stop-opacity=".85"/>
+    <stop offset="100%" stop-color="#8a6030" stop-opacity=".6"/>
+  </linearGradient>`;
+  html += '</defs>';
+
+  // grid
+  [0.33, 0.66, 1].forEach(f=>{
+    const y = top + chartH*(1-f);
+    html += `<line x1="${padL}" y1="${y.toFixed(1)}" x2="${W-padR}" y2="${y.toFixed(1)}"
+      stroke="rgba(200,160,96,.07)" stroke-width="1" stroke-dasharray="${f===1?'0':'3,3'}"/>`;
+    html += `<text x="${padL-3}" y="${(y+3).toFixed(1)}" font-size="6.5"
+      fill="rgba(200,160,96,.3)" text-anchor="end" font-family="IBM Plex Mono">${Math.round(maxVal*f)}</text>`;
+  });
+
+  days.forEach((d,i)=>{
+    const xBase = padL + i*bw;
+    const xMid  = xBase + bw/2;
+    const yBase = top + chartH;
+
+    if(ft[i]>0){
+      const bH = (chartH/maxVal)*ft[i];
+      const bX = xBase + bGap/2;
+      const bW = bw - bGap;
+      html += `<rect x="${bX.toFixed(1)}" y="${(yBase-bH).toFixed(1)}" width="${bW.toFixed(1)}" height="${bH.toFixed(1)}"
+        fill="url(#gft)" rx="2"/>`;
+      html += `<text x="${xMid.toFixed(1)}" y="${(yBase-bH-3).toFixed(1)}"
+        font-size="6.5" fill="rgba(82,160,56,.8)" text-anchor="middle" font-family="IBM Plex Mono">620</text>`;
+    }
+    if(ac[i]>0){
+      const bH = (chartH/maxVal)*ac[i];
+      const bX = xBase + bGap/2;
+      const bW = bw - bGap;
+      html += `<rect x="${bX.toFixed(1)}" y="${(yBase-bH).toFixed(1)}" width="${bW.toFixed(1)}" height="${bH.toFixed(1)}"
+        fill="url(#gac)" rx="2"/>`;
+      html += `<text x="${xMid.toFixed(1)}" y="${(yBase-bH-3).toFixed(1)}"
+        font-size="6.5" fill="rgba(221,184,112,.8)" text-anchor="middle" font-family="IBM Plex Mono">${ac[i]}</text>`;
+    }
+    if(ft[i]===0 && ac[i]===0){
+      // rest day tick
+      html += `<line x1="${xMid.toFixed(1)}" y1="${(top+chartH-6).toFixed(1)}" x2="${xMid.toFixed(1)}" y2="${(top+chartH).toFixed(1)}"
+        stroke="rgba(200,160,96,.12)" stroke-width="1"/>`;
+    }
+    html += `<text x="${xMid.toFixed(1)}" y="${H-2}" font-size="7"
+      fill="rgba(200,160,96,.4)" text-anchor="middle" font-family="IBM Plex Mono">${d}</text>`;
+  });
+
+  // total weekly annotation
+  const totalUA = ft.reduce((a,b)=>a+b,0) + ac.reduce((a,b)=>a+b,0);
+  html += `<text x="${W-padR}" y="${top+8}" font-size="7" fill="rgba(200,160,96,.4)"
+    text-anchor="end" font-family="IBM Plex Mono">Total S1: ~${totalUA} UA/sem</text>`;
+
+  svg.innerHTML = html;
+}
+
+/* ── RADAR ─────────────────────────────────────────── */
+function drawRadar(){
+  const svg = document.getElementById('radar-svg');
+  // 5 axes: Neural·Sup, Mecânica·Sup, Metabólica, Neural·Inf, Mecânica·Inf
+  const cx=110, cy=105, r=70;
+  const n = 5;
+  const axisLabels = ['Neural\nSup','Mecânica\nSup','Metab.','Neural\nInf','Mecânica\nInf'];
+  // Estimated S1 normalized (0–1):
+  // Superiores dominam Mecânica (2 sessões × alto IM × volume)
+  // Inferiores: Neural alto por coef mas baixo volume total
+  const vals = [0.44, 0.72, 0.34, 0.62, 0.28];
+  const dotColors = [
+    'rgba(150,140,220,.9)',
+    'rgba(90,170,210,.9)',
+    'rgba(80,190,130,.9)',
+    'rgba(150,140,220,.65)',
+    'rgba(90,170,210,.65)'
+  ];
+
+  function pt(idx, frac){
+    const ang = (idx/n)*Math.PI*2 - Math.PI/2;
+    return {x:cx+Math.cos(ang)*r*frac, y:cy+Math.sin(ang)*r*frac};
+  }
+
+  let html = '';
+  // defs gradient fill
+  html += `<defs><radialGradient id="rfill" cx="50%" cy="50%" r="50%">
+    <stop offset="0%" stop-color="rgba(200,160,96,.18)"/>
+    <stop offset="100%" stop-color="rgba(200,160,96,.03)"/>
+  </radialGradient></defs>`;
+
+  // grid rings
+  [0.25,0.5,0.75,1].forEach(f=>{
+    let pts = Array.from({length:n},(_,i)=>pt(i,f));
+    html += `<polygon points="${pts.map(p=>`${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')}"
+      fill="none" stroke="rgba(200,160,96,${f===1?.14:.06})" stroke-width="${f===1?1:.7}"/>`;
+    if(f===0.5){
+      const p=pt(0,0.5);
+      html+=`<text x="${cx+2}" y="${cy-r*0.5-4}" font-size="6" fill="rgba(200,160,96,.3)" font-family="IBM Plex Mono">50%</text>`;
+    }
+  });
+
+  // axis lines + labels
+  for(let i=0;i<n;i++){
+    const p=pt(i,1);
+    html+=`<line x1="${cx}" y1="${cy}" x2="${p.x.toFixed(1)}" y2="${p.y.toFixed(1)}"
+      stroke="rgba(200,160,96,.1)" stroke-width="1"/>`;
+
+    const lp=pt(i,1.26);
+    const lines = axisLabels[i].split('\n');
+    const anchor = lp.x < cx-6 ? 'end' : lp.x > cx+6 ? 'start' : 'middle';
+    lines.forEach((line,li)=>{
+      html+=`<text x="${lp.x.toFixed(1)}" y="${(lp.y+(li*9)-((lines.length-1)*4.5)).toFixed(1)}"
+        font-size="7" fill="rgba(200,160,96,.5)" text-anchor="${anchor}"
+        font-family="IBM Plex Mono,monospace">${line}</text>`;
+    });
+  }
+
+  // data polygon fill
+  let dataPts = vals.map((v,i)=>pt(i,v));
+  html+=`<polygon points="${dataPts.map(p=>`${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')}"
+    fill="url(#rfill)" stroke="rgba(200,160,96,.55)" stroke-width="1.5"/>`;
+
+  // dots + values
+  dataPts.forEach((p,i)=>{
+    html+=`<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="4"
+      fill="${dotColors[i]}" stroke="rgba(22,18,13,.7)" stroke-width="1.5"/>`;
+    html+=`<text x="${p.x.toFixed(1)}" y="${(p.y-7).toFixed(1)}"
+      font-size="7" fill="${dotColors[i]}" text-anchor="middle"
+      font-family="IBM Plex Mono">${Math.round(vals[i]*100)}%</text>`;
+  });
+
+  svg.innerHTML = html;
+}
+
+/* ── INIT ──────────────────────────────────────────── */
+document.addEventListener('DOMContentLoaded',()=>{
+  // nothing on init — charts drawn on first tab visit
+});
+</script>
+</div>
+</body>
+</html>
